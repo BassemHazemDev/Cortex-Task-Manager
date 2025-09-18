@@ -23,6 +23,7 @@
  */
 
 import { useState, useEffect } from "react";
+import dailyTips from "./lib/dailyTips";
 import {
   Calendar,
   Plus,
@@ -55,6 +56,18 @@ import {
 import "./App.css";
 
 function App() {
+  // Daily tip logic: Save tip index in localStorage so it changes only once per day
+  function getDailyTip() {
+    const today = new Date().toISOString().split("T")[0];
+    const tipData = JSON.parse(localStorage.getItem("dailyTipIndex")) || {};
+    if (tipData.date === today && typeof tipData.index === "number") {
+      return dailyTips[tipData.index];
+    }
+    // Pick a new random tip index for today
+    const newIndex = Math.floor(Math.random() * dailyTips.length);
+    localStorage.setItem("dailyTipIndex", JSON.stringify({ date: today, index: newIndex }));
+    return dailyTips[newIndex];
+  }
   // ===========================================================================
   // STATE MANAGEMENT
   // ===========================================================================
@@ -773,8 +786,7 @@ function App() {
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-accent-foreground/80 leading-relaxed">
-                  Try the "2-minute rule": If a task takes less than 2 minutes,
-                  do it immediately instead of adding it to your list.
+                  {getDailyTip()}
                 </p>
               </CardContent>
             </Card>
