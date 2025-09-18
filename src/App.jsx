@@ -467,7 +467,11 @@ function App() {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <div className="p-3 bg-primary/10 rounded-2xl backdrop-blur-sm">
-                <Calendar className="h-8 w-8 text-primary" />
+                <img
+                  src={isDarkMode ? "/cortex2.png" : "/cortex1.png"}
+                  alt="Cortex Logo"
+                  style={{ width: '32px', height: '32px', objectFit: 'contain' }}
+                />
               </div>
               <div>
                 <h1 className="text-3xl font-bold text-foreground tracking-tight">
