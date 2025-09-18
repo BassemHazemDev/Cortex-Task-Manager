@@ -92,6 +92,7 @@
   
   /* Interactive element colors */
   --primary: oklch(0.45 0.08 220);
+  --primary-muted: oklch(45.246% 0.08009 219.04 / 0.681);
   --primary-foreground: oklch(0.98 0.01 120);
   --secondary: oklch(0.95 0.02 120);
   --secondary-foreground: oklch(0.25 0.02 240);

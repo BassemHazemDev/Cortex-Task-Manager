@@ -14,7 +14,7 @@ const NotificationSystem = ({ notifications, onDismiss }) => {
   const getIcon = (type) => {
     switch (type) {
       case 'success':
-        return <CheckCircle className="h-5 w-5" style={{ color: 'var(--success, #22c55e)' }} />
+        return <CheckCircle className="h-5 w-5" style={{ color: 'var(--accent-2)' }} />
       case 'error':
         return <AlertCircle className="h-5 w-5" style={{ color: 'var(--destructive, #ef4444)' }} />
       case 'warning':

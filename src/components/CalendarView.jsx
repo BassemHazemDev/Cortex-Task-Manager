@@ -202,7 +202,7 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
                         ? 'var(--accent)'
                         : task.priority === 'high'
                           ? 'var(--accent-2)'
-                          : (task.isCompleted ? 'var(--success, #22c55e)' : 'var(--muted)');
+                          : (task.isCompleted ? 'var(--accent-2)' : 'var(--muted)');
                       let color = task.priority === 'medium' || task.priority === 'high'
                         ? 'var(--accent-foreground)'
                         : (task.isCompleted ? 'var(--success-foreground, #fff)' : 'var(--foreground)');
@@ -308,7 +308,7 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
                             onToggleComplete(task.id);
                           }}
                           className="w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all"
-                          style={{ background: task.isCompleted ? 'var(--success, #22c55e)' : bg, borderColor: task.isCompleted ? 'var(--success, #22c55e)' : 'var(--border)' }}
+                          style={{ background: task.isCompleted ? 'var(--accent-2)' : bg, borderColor: task.isCompleted ? 'var(--accent-2)' : 'var(--border)' }}
                         >
                           {task.isCompleted && <CheckCircle className="h-3 w-3" style={{ color: 'var(--success-foreground, #fff)' }} />}
                         </button>

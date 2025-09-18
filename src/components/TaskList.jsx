@@ -267,7 +267,7 @@ const TaskList = ({ tasks, onTaskClick, onToggleComplete, onDeleteTask }) => {
                           ? 'bg-success border-success' 
                           : 'border-border hover:border-success'
                       }`}
-                      style={{ background: task.isCompleted ? 'var(--success, #22c55e)' : 'var(--background)', borderColor: task.isCompleted ? 'var(--success, #22c55e)' : 'var(--border)' }}
+                      style={{ background: task.isCompleted ? 'var(--accent-2)' : 'var(--background)', borderColor: task.isCompleted ? 'var(--accent-2)' : 'var(--border)' }}
                     >
                       {task.isCompleted && <CheckCircle className="h-3 w-3" style={{ color: 'var(--success-foreground, #fff)' }} />}
                     </button>

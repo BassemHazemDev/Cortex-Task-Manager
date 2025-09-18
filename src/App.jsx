@@ -667,13 +667,14 @@ function App() {
                                 toggleTaskComplete(task.id);
                               }}
                               className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-300 ${
-                                task.isCompleted
-                                  ? "bg-green-500 border-green-500"
-                                  : "border-muted-foreground/30 hover:border-green-400"
+                              task.isCompleted
+                              ? "border-[var(--accent-2)] hover:border-[var(--accent-2)]"
+                              : "border-muted-foreground/30 hover:border-[var(--accent-2)]"
                               }`}
+                              style={{ background: task.isCompleted ? 'var(--accent-2)' : 'transparent' }}
                             >
                               {task.isCompleted && (
-                                <CheckCircle className="h-3 w-3 text-white" />
+                                <CheckCircle className="h-3 w-3 text-white"/>
                               )}
                             </button>
                             <div className="flex-1 min-w-0">

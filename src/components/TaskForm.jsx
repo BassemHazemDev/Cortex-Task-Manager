@@ -149,7 +149,7 @@ const TaskForm = ({ task, onSave, onCancel }) => {
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center space-x-2">
-                <AlertCircle className="h-5 w-5 text-blue-600" />
+                <AlertCircle className="h-5 w-5 text-[var(--primary)]" />
                 <span>{task ? 'Edit Task' : 'Add New Task'}</span>
               </CardTitle>
               <Button
@@ -346,7 +346,10 @@ const TaskForm = ({ task, onSave, onCancel }) => {
             <div className="flex space-x-2 pt-4">
               <Button
                 type="submit"
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                className="flex-1 text-white"
+                style={{ background: 'var(--primary)', border: '1px solid var(--accent-2)' }}
+                onMouseOver={e => e.currentTarget.style.background = 'var(--primary-muted)'}
+                onMouseOut={e => e.currentTarget.style.background = 'var(--primary)'}
               >
                 <Save className="h-4 w-4 mr-2" />
                 {task ? 'Update Task' : 'Add Task'}
