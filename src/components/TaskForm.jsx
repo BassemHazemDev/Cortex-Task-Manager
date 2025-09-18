@@ -223,6 +223,26 @@ const TaskForm = ({ task, onSave, onCancel }) => {
               </div>
             </div>
 
+            <div className="space-y-2">
+              <Label htmlFor="estimatedDuration">Estimated Duration (minutes) *</Label>
+              <Input
+                id="estimatedDuration"
+                type="number"
+                value={formData.estimatedDuration}
+                onChange={(e) => handleChange('estimatedDuration', e.target.value)}
+                min="1"
+                step="1"
+                placeholder=""
+                className={errors.estimatedDuration ? 'border-red-500' : ''}
+              />
+              {errors.estimatedDuration && (
+                <p className="text-sm text-red-500">{errors.estimatedDuration}</p>
+              )}
+              <p className="text-sm text-gray-500">
+                This helps with intelligent scheduling
+              </p>
+            </div>
+
             {/* Tag selection and management section */}
             <div className="space-y-2">
               <Label htmlFor="tags">Tags</Label>
@@ -320,25 +340,7 @@ const TaskForm = ({ task, onSave, onCancel }) => {
               />
               <p className="text-sm text-gray-500">If set, this task will repeat according to the selected frequency until the chosen date.</p>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="estimatedDuration">Estimated Duration (minutes) *</Label>
-              <Input
-                id="estimatedDuration"
-                type="number"
-                value={formData.estimatedDuration}
-                onChange={(e) => handleChange('estimatedDuration', e.target.value)}
-                min="1"
-                step="1"
-                placeholder=""
-                className={errors.estimatedDuration ? 'border-red-500' : ''}
-              />
-              {errors.estimatedDuration && (
-                <p className="text-sm text-red-500">{errors.estimatedDuration}</p>
-              )}
-              <p className="text-sm text-gray-500">
-                This helps with intelligent scheduling
-              </p>
-            </div>
+            
 
             {/* Form action buttons: save or cancel */}
             <div className="flex space-x-2 pt-4">
