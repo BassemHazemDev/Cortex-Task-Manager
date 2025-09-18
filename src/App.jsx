@@ -132,15 +132,21 @@ function App() {
     // Check for time conflict for single and repeated tasks
     if (taskData.repeatUntil && taskData.repeatFrequency !== "none" && taskData.dueDate) {
       const repeatedTasks = [];
-      let currentDate = new Date(taskData.dueDate + 'T00:00:00'); // Avoid timezone issues
-      const repeatUntilDate = new Date(taskData.repeatUntil + 'T00:00:00');
+      // Parse the initial date and time
+      let currentDate = new Date(`${taskData.dueDate}T${taskData.dueTime || "00:00"}`);
+      const repeatUntilDate = new Date(`${taskData.repeatUntil}T${taskData.dueTime || "00:00"}`);
       let i = 0;
       let conflictFound = false;
 
       while (currentDate <= repeatUntilDate) {
+        // Format date and time for each repeated task
+        const pad = (n) => n.toString().padStart(2, '0');
+        const candidateDate = `${currentDate.getFullYear()}-${pad(currentDate.getMonth() + 1)}-${pad(currentDate.getDate())}`;
+        const candidateTime = `${pad(currentDate.getHours())}:${pad(currentDate.getMinutes())}`;
         const candidate = {
           ...taskData,
-          dueDate: currentDate.toISOString().split("T")[0],
+          dueDate: candidateDate,
+          dueTime: candidateTime,
         };
         if (hasTimeConflict(candidate, tasks)) {
           conflictFound = true;
@@ -152,7 +158,7 @@ function App() {
           isCompleted: false,
           assignedSlot: null,
         });
-        // Increment the date based on the chosen frequency.
+        // Increment the date based on the chosen frequency, preserving the time
         switch (taskData.repeatFrequency) {
           case "daily":
             currentDate.setDate(currentDate.getDate() + 1);

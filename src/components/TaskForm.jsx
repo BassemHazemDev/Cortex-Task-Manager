@@ -68,21 +68,26 @@ const TaskForm = ({ task, onSave, onCancel }) => {
     // Sanitize duration
     let duration = parseInt(formData.estimatedDuration)
     if (isNaN(duration) || duration < 1) duration = 1
-    // Use local date string for dueDate
-    let dueDate = formData.dueDate
-    if (dueDate) {
-      const d = new Date(dueDate)
-      const pad = (n) => n.toString().padStart(2, '0')
-      dueDate = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
-    }
-    const taskData = {
-      ...formData,
-      title: formData.title.trim(),
-      description: formData.description.trim(),
-      estimatedDuration: duration,
-      dueDate,
-      tags: formData.tags.map(tag => tag.trim()).filter(tag => tag.length > 0)
-    }
+      // Ensure dueDate and dueTime are saved separately
+      let dueDate = formData.dueDate;
+      let dueTime = formData.dueTime || "00:00";
+      // Validate and format dueDate and dueTime
+      if (dueDate) {
+        // Ensure dueDate is in YYYY-MM-DD format
+        const d = new Date(`${dueDate}T${dueTime}`);
+        const pad = (n) => n.toString().padStart(2, '0');
+        dueDate = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+        dueTime = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+      }
+      const taskData = {
+        ...formData,
+        title: formData.title.trim(),
+        description: formData.description.trim(),
+        estimatedDuration: duration,
+        dueDate,
+        dueTime,
+        tags: formData.tags.map(tag => tag.trim()).filter(tag => tag.length > 0)
+      }
 
     if (task) {
       onSave({ ...taskData, id: task.id })
