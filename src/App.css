@@ -1,0 +1,459 @@
+/**
+ * =============================================================================
+ * STYLESHEET: Main Application Styles
+ * =============================================================================
+ *
+ * This file contains the core styling architecture for the application. It includes:
+ * 1.  Tailwind CSS setup and custom directives.
+ * 2.  A comprehensive theming system with light and dark mode variables.
+ * 3.  Base styles for global elements (typography, layout).
+ * 4.  Reusable component classes and utility styles.
+ * 5.  Custom animations and scrollbar styling for a polished user experience.
+ *
+ * The color system is based on the OKLCH color space to ensure perceptual
+ * uniformity and accessibility across different displays.
+ *
+ * =============================================================================
+ */
+
+/*
+ * -----------------------------------------------------------------------------
+ * IMPORTS & CONFIGURATION
+ * -----------------------------------------------------------------------------
+ * Initializes Tailwind CSS and registers custom variants and themes.
+ */
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/* Defines a custom variant for dark mode, applying styles when `.dark` is a parent. */
+@custom-variant dark (&:is(.dark *));
+
+/* * Maps our custom CSS variables to Tailwind's theming system.
+ * This allows us to use theme-aware colors and radii in Tailwind utility classes.
+ */
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+
+/*
+ * -----------------------------------------------------------------------------
+ * THEME & COLOR VARIABLES
+ * -----------------------------------------------------------------------------
+ * Defines the color palette and design tokens for both light and dark themes.
+ */
+
+/* Light Theme (Default) */
+:root {
+  /* Core layout and text colors */
+  --radius: 0.75rem;
+  --background: oklch(0.99 0.005 120);
+  --foreground: oklch(0.15 0.02 240);
+  
+  /* Component-specific colors */
+  --card: oklch(0.98 0.01 120);
+  --card-foreground: oklch(0.15 0.02 240);
+  --popover: oklch(0.98 0.01 120);
+  --popover-foreground: oklch(0.15 0.02 240);
+  
+  /* Interactive element colors */
+  --primary: oklch(0.45 0.08 220);
+  --primary-foreground: oklch(0.98 0.01 120);
+  --secondary: oklch(0.95 0.02 120);
+  --secondary-foreground: oklch(0.25 0.02 240);
+  --muted: oklch(0.96 0.01 120);
+  --muted-foreground: oklch(0.55 0.02 240);
+  --accent: oklch(0.94 0.03 180);
+  --accent-foreground: oklch(0.25 0.02 240);
+  --destructive: oklch(0.65 0.15 25);
+  
+  /* Borders and rings */
+  --border: oklch(0.92 0.01 120);
+  --input: oklch(0.92 0.01 120);
+  --ring: oklch(0.45 0.08 220);
+  
+  /* Data visualization chart colors */
+  --chart-1: oklch(0.65 0.12 200);
+  --chart-2: oklch(0.7 0.1 160);
+  --chart-3: oklch(0.6 0.08 280);
+  --chart-4: oklch(0.75 0.12 80);
+  --chart-5: oklch(0.7 0.1 40);
+  
+  /* Sidebar-specific colors */
+  --sidebar: oklch(0.97 0.01 120);
+  --sidebar-foreground: oklch(0.15 0.02 240);
+  --sidebar-primary: oklch(0.45 0.08 220);
+  --sidebar-primary-foreground: oklch(0.98 0.01 120);
+  --sidebar-accent: oklch(0.94 0.03 180);
+  --sidebar-accent-foreground: oklch(0.25 0.02 240);
+  --sidebar-border: oklch(0.92 0.01 120);
+  --sidebar-ring: oklch(0.45 0.08 220);
+}
+
+/* Dark Theme Overrides */
+.dark {
+  --background: oklch(0.13 0.02 240); 
+  --foreground: oklch(0.98 0.01 120); 
+  --card: oklch(0.18 0.02 240); 
+  --card-foreground: oklch(0.98 0.01 120);
+  --popover: oklch(0.18 0.02 240);
+  --popover-foreground: oklch(0.98 0.01 120);
+  --primary: oklch(0.7 0.1 220);
+  --primary-foreground: oklch(0.13 0.02 240);
+  --secondary: oklch(0.22 0.02 240); 
+  --secondary-foreground: oklch(0.98 0.01 120);
+  --muted: oklch(0.22 0.01 240);
+  --muted-foreground: oklch(0.7 0.02 240);
+  --accent: oklch(0.55 0.08 220); 
+  --accent-foreground: oklch(0.98 0.01 120);
+  --destructive: oklch(0.7 0.15 25);
+  --border: oklch(0.22 0.01 240);
+  --input: oklch(0.22 0.01 240);
+  --ring: oklch(0.7 0.1 220);
+  --chart-1: oklch(0.6 0.12 200);
+  --chart-2: oklch(0.65 0.1 160);
+  --chart-3: oklch(0.55 0.08 280);
+  --chart-4: oklch(0.7 0.12 80);
+  --chart-5: oklch(0.65 0.1 40);
+  --sidebar: oklch(0.16 0.02 240); 
+  --sidebar-foreground: oklch(0.98 0.01 120);
+  --sidebar-primary: oklch(0.7 0.12 200);
+  --sidebar-primary-foreground: oklch(0.98 0.01 120);
+  --sidebar-accent: oklch(0.28 0.03 180);
+  --sidebar-accent-foreground: oklch(0.98 0.01 120);
+  --sidebar-border: oklch(0.22 0.01 240);
+  --sidebar-ring: oklch(0.7 0.1 220);
+}
+
+
+/*
+ * -----------------------------------------------------------------------------
+ * BASE & GLOBAL STYLES
+ * -----------------------------------------------------------------------------
+ * Sets foundational styles for the entire document, including typography,
+ * box-sizing, and default text/background colors.
+ */
+@layer base {
+  /* Apply a consistent border and outline style to all elements. */
+  * {
+    @apply border-border outline-ring/50;
+  }
+  /* Set body defaults: background, text color, and font. */
+  body {
+    @apply bg-background text-foreground font-sans;
+    font-feature-settings: "rlig" 1, "calt" 1; /* Enable common font ligatures. */
+  }
+}
+
+
+/*
+ * -----------------------------------------------------------------------------
+ * COMPONENT & UTILITY CLASSES
+ * -----------------------------------------------------------------------------
+ * A collection of reusable classes for UI components like cards, buttons,
+ * and inputs, along with custom utilities.
+ */
+@layer components {
+  /* Main container for the calendar view. */
+  .calendar-container {
+    background: var(--card);
+    color: var(--card-foreground);
+    border-radius: 1rem; /* Generous rounding for a modern look. */
+    box-shadow: 0 2px 16px 0 oklch(0.13 0.02 240 / 0.12); /* Soft, diffused shadow. */
+    padding: 1.5rem;
+    transition: all 0.3s, color 0.3s; /* Smooth transitions for theme changes. */
+  }
+
+  /* A shared transition for consistent animation timing. */
+  .calm-transition {
+    transition: all 0.3s ease-out;
+  }
+  
+  /* A hover effect that provides a subtle "lift" and shadow. */
+  .calm-hover:hover {
+    transform: scale(1.02);
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    transition: all 0.3s ease-out;
+  }
+  
+  /* A focus style for accessibility and visual feedback. */
+  .calm-focus:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px hsl(var(--primary) / 0.2);
+    border-color: hsl(var(--primary) / 0.5);
+    transition: all 0.3s ease-out;
+  }
+  
+  /* Base card style with a frosted-glass effect. */
+  .calm-card {
+    background-color: hsl(var(--card) / 0.8);
+    backdrop-filter: blur(8px); /* The "frosted glass" effect. */
+    border: 1px solid hsl(var(--border) / 0.5);
+    border-radius: 0.75rem;
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  }
+  
+  .calm-card:hover {
+    transform: scale(1.02);
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    transition: all 0.3s ease-out;
+  }
+  
+  /* Base button styles for consistent interactions. */
+  .calm-button {
+    transition: all 0.3s ease-out;
+  }
+  
+  .calm-button:hover {
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  }
+  
+  /* Provides tactile feedback when a button is pressed. */
+  .calm-button:active {
+    transform: scale(0.95);
+  }
+  
+  /* Base input field styling. */
+  .calm-input {
+    transition: all 0.3s ease-out;
+  }
+  
+  .calm-input::placeholder {
+    color: hsl(var(--muted-foreground) / 0.6);
+  }
+  
+  /* A soft, pleasing gradient for backgrounds. */
+  .serene-gradient {
+    background: linear-gradient(135deg, 
+      oklch(0.99 0.005 120) 0%, 
+      oklch(0.97 0.02 180) 50%, 
+      oklch(0.95 0.03 200) 100%);
+  }
+  
+  /* Dark mode variant for the serene gradient. */
+  .dark .serene-gradient {
+    background: linear-gradient(135deg, oklch(0.13 0.02 240) 0%, oklch(0.18 0.02 240) 100%);
+  }
+  
+  /* --- Task Priority Indicators --- */
+  .task-priority-high {
+    background-color: rgb(254 242 242);
+    border-color: rgb(254 202 202);
+    color: rgb(153 27 27);
+  }
+  
+  .task-priority-medium {
+    background-color: rgb(254 249 195);
+    border-color: rgb(254 240 138);
+    color: rgb(146 64 14);
+  }
+  
+  .task-priority-low {
+    background-color: rgb(240 253 244);
+    border-color: rgb(187 247 208);
+    color: rgb(21 128 61);
+  }
+  
+  /* --- Calendar-Specific Styles --- */
+  .calendar-day {
+    transition: all 0.3s ease-out;
+    border-radius: 0.5rem;
+  }
+  
+  .calendar-day:hover {
+    background-color: hsl(var(--accent) / 0.5);
+  }
+  
+  .calendar-day-today {
+    background-color: hsl(var(--primary) / 0.1);
+    border-color: hsl(var(--primary) / 0.3);
+    color: hsl(var(--primary-foreground));
+  }
+  
+  .calendar-day-selected {
+    background-color: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  }
+  
+  /* --- Task Item Styles --- */
+  .task-item {
+    background-color: hsl(var(--card) / 0.8);
+    backdrop-filter: blur(8px);
+    border: 1px solid hsl(var(--border) / 0.5);
+    border-radius: 0.75rem;
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+    padding: 0.75rem;
+    margin-bottom: 0.5rem;
+    cursor: pointer;
+  }
+  
+  .task-item:hover {
+    background-color: hsl(var(--accent) / 0.3);
+  }
+  
+  /* Visual style for a completed task. */
+  .task-completed {
+    opacity: 0.6;
+    text-decoration: line-through;
+  }
+  
+  /* Floating Action Button (FAB) */
+  .floating-action {
+    position: fixed;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    z-index: 40; /* Ensures it's above most other content. */
+    transition: all 0.3s ease-out;
+  }
+  
+  .floating-action:hover {
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  }
+  
+  .floating-action:active {
+    transform: scale(0.95);
+  }
+  
+  /* --- Notification Animations --- */
+  .notification-enter {
+    animation: slide-in-from-right 0.3s ease-out;
+  }
+  
+  .notification-exit {
+    animation: slide-out-to-right 0.2s ease-out;
+  }
+}
+
+/*
+ * -----------------------------------------------------------------------------
+ * GENERAL ELEMENT & UTILITY STYLES
+ * -----------------------------------------------------------------------------
+ * Global overrides and enhancements for HTML elements and custom utilities.
+ */
+
+/* Enables smooth scrolling behavior for anchor links. */
+html {
+  scroll-behavior: smooth;
+}
+
+/* --- Custom Scrollbar Styling --- */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent; /* Makes the track invisible. */
+}
+
+::-webkit-scrollbar-thumb {
+  background: oklch(0.7 0.02 240);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.6 0.02 240);
+}
+
+/* A custom focus-visible style for keyboard navigation. */
+.focus-visible {
+  @apply outline-none ring-2 ring-primary/50 ring-offset-2 ring-offset-background;
+}
+
+/* --- Keyframe Animations --- */
+@keyframes gentle-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+/* Utility class to apply the gentle-pulse animation. */
+.gentle-pulse {
+  animation: gentle-pulse 2s ease-in-out infinite;
+}
+
+/* --- Typographic Enhancements --- */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600;
+  letter-spacing: -0.025em; /* Tighter letter spacing for headings. */
+}
+
+p {
+  line-height: 1.625; /* Improved readability for paragraphs. */
+}
+
+/* --- Global Component Enhancements --- */
+
+/* Default button interaction styles. */
+button {
+  transition: all 0.3s ease-out;
+}
+
+button:hover {
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+}
+
+button:active {
+  transform: scale(0.95);
+}
+
+/* Default input, textarea, and select styles. */
+input, textarea, select {
+  transition: all 0.3s ease-out;
+}
+
+input::placeholder, textarea::placeholder {
+  color: hsl(var(--muted-foreground) / 0.6);
+}
+
+input:focus, textarea:focus, select:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.2);
+  border-color: hsl(var(--primary) / 0.5);
+}
+
+/* Default card styles with the frosted-glass effect. */
+.card {
+  background-color: hsl(var(--card) / 0.8);
+  backdrop-filter: blur(8px);
+  border: 1px solid hsl(var(--border) / 0.5);
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+}
