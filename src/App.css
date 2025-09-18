@@ -99,6 +99,7 @@
   --muted-foreground: oklch(0.55 0.02 240);
   --accent: oklch(0.94 0.03 180);
   --accent-foreground: oklch(0.25 0.02 240);
+  --accent-2: oklch(65.371% 0.11119 200.985 / 0.44);
   --destructive: oklch(0.65 0.15 25);
   
   /* Borders and rings */

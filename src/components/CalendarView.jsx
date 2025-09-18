@@ -169,7 +169,7 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
                 if (!b.dueTime) return -1;
                 return a.dueTime.localeCompare(b.dueTime);
               });
-              const hasHighPriority = dayTasks.some(task => task.priority === 'high' && !task.isCompleted);
+              // const hasHighPriority = dayTasks.some(task => task.priority === 'high' && !task.isCompleted);
 
               // Dynamically sets background and text color for each day cell based on state (today, selected, high priority)
               let dayBg = 'var(--card)';
@@ -179,12 +179,8 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
                 dayBg = isDark ? 'var(--primary)' : '#e0f2fe';
                 dayBorder = isDark ? 'var(--primary)' : '#38bdf8';
                 dayText = isDark ? 'var(--primary-foreground)' : '#0c4a6e';
-              } else if (hasHighPriority) {
-                // Treat high priority like medium: accent color, not red
-                dayBg = 'var(--accent)';
-                dayBorder = 'var(--accent)';
-                dayText = 'var(--accent-foreground)';
-              } else if (isSelected(date)) {
+              } 
+              else if (isSelected(date)) {
                 dayBg = isDark ? 'var(--accent)' : '#bae6fd';
                 dayBorder = isDark ? 'var(--accent)' : '#38bdf8';
                 dayText = isDark ? 'var(--accent-foreground)' : '#0c4a6e';
@@ -202,9 +198,11 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
                   <div className="space-y-1">
                     {dayTasks.slice(0, 2).map(task => {
                       // Renders each task in the day cell with appropriate color and click handler
-                      let bg = task.priority === 'medium' || task.priority === 'high'
+                      let bg = task.priority === 'medium'
                         ? 'var(--accent)'
-                        : (task.isCompleted ? 'var(--success, #22c55e)' : 'var(--muted)');
+                        : task.priority === 'high'
+                          ? 'var(--accent-2)'
+                          : (task.isCompleted ? 'var(--success, #22c55e)' : 'var(--muted)');
                       let color = task.priority === 'medium' || task.priority === 'high'
                         ? 'var(--accent-foreground)'
                         : (task.isCompleted ? 'var(--success-foreground, #fff)' : 'var(--foreground)');
@@ -212,7 +210,7 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
                       if (isOverdue(task)) {
                         bg = isDark ? '#7f1d1d' : '#fee2e2';
                         color = isDark ? '#fee2e2' : '#7f1d1d';
-                        opacity = 1;
+                        opacity = isDark ? 0.9 : 1;
                       }
                       return (
                         <div
