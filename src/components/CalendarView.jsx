@@ -180,9 +180,10 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
                 dayBorder = isDark ? 'var(--primary)' : '#38bdf8';
                 dayText = isDark ? 'var(--primary-foreground)' : '#0c4a6e';
               } else if (hasHighPriority) {
-                dayBg = isDark ? 'oklch(0.28 0.08 25)' : '#fee2e2';
-                dayBorder = isDark ? 'oklch(0.7 0.15 25)' : '#ef4444';
-                dayText = isDark ? 'var(--destructive)' : '#991b1b';
+                // Treat high priority like medium: accent color, not red
+                dayBg = 'var(--accent)';
+                dayBorder = 'var(--accent)';
+                dayText = 'var(--accent-foreground)';
               } else if (isSelected(date)) {
                 dayBg = isDark ? 'var(--accent)' : '#bae6fd';
                 dayBorder = isDark ? 'var(--accent)' : '#38bdf8';
@@ -201,17 +202,23 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
                   <div className="space-y-1">
                     {dayTasks.slice(0, 2).map(task => {
                       // Renders each task in the day cell with appropriate color and click handler
-                      let bg = task.priority === 'medium' ? 'var(--accent)' : (task.isCompleted ? 'var(--success, #22c55e)' : task.priority === 'high' ? 'var(--destructive)' : 'var(--muted)');
-                      let color = task.priority === 'medium' ? 'var(--accent-foreground)' : (task.isCompleted ? 'var(--success-foreground, #fff)' : task.priority === 'high' ? 'var(--destructive-foreground, #fff)' : 'var(--foreground)');
+                      let bg = task.priority === 'medium' || task.priority === 'high'
+                        ? 'var(--accent)'
+                        : (task.isCompleted ? 'var(--success, #22c55e)' : 'var(--muted)');
+                      let color = task.priority === 'medium' || task.priority === 'high'
+                        ? 'var(--accent-foreground)'
+                        : (task.isCompleted ? 'var(--success-foreground, #fff)' : 'var(--foreground)');
+                      let opacity = 1;
                       if (isOverdue(task)) {
                         bg = isDark ? '#7f1d1d' : '#fee2e2';
                         color = isDark ? '#fee2e2' : '#7f1d1d';
+                        opacity = 1;
                       }
                       return (
                         <div
                           key={task.id}
-                          className="text-xs p-1 rounded truncate"
-                          style={{ background: bg, color, textDecoration: task.isCompleted ? 'line-through' : 'none' }}
+                          className="text-xs p-1 rounded truncate shadow-md"
+                          style={{ background: bg, color, textDecoration: task.isCompleted ? 'line-through' : 'none', opacity }}
                           onClick={(e) => {
                             e.stopPropagation();
                             onTaskClick(task);
@@ -281,17 +288,19 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
                   if (!b.dueTime) return -1;
                   return a.dueTime.localeCompare(b.dueTime);
                 }).map(task => {
-                  let bg = 'var(--card)';
-                  let color = 'var(--foreground)';
+                  let bg = (task.priority === 'medium' || task.priority === 'high') ? 'var(--accent)' : 'var(--card)';
+                  let color = (task.priority === 'medium' || task.priority === 'high') ? 'var(--accent-foreground)' : 'var(--foreground)';
+                  let opacity = task.priority === 'high' ? 0.8 : 1;
                   if (isOverdue(task)) {
                     bg = isDark ? '#7f1d1d' : '#fee2e2';
                     color = isDark ? '#fee2e2' : '#7f1d1d';
+                    opacity = 1;
                   }
                   return (
                     <div
                       key={task.id}
-                      className="flex items-center justify-between p-3 rounded-lg hover:shadow-md cursor-pointer transition-colors"
-                      style={{ background: bg, color }}
+                      className="flex items-center justify-between p-3 rounded-lg hover:shadow-md cursor-pointer transition-colors shadow-md"
+                      style={{ background: bg, color, opacity }}
                       onClick={() => onTaskClick(task)}
                     >
                       <div className="flex items-center space-x-3">
@@ -328,7 +337,7 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
                             <p className="text-sm px-2 py-1 rounded-md" style={{ background: 'var(--muted)', color: 'var(--muted-foreground)' }}>{formatTime12(task.dueTime)}</p>
                           )}
                         <Badge variant={
-                          task.priority === 'high' ? 'destructive' : 
+                          task.priority === 'high' ? 'default' : 
                           task.priority === 'medium' ? 'default' : 
                           'secondary'
                         }>

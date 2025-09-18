@@ -141,33 +141,37 @@ const SmartScheduler = ({ tasks, onUpdateTask, onShowNotification }) => {
   }
 
   const handleOptimizeSchedule = () => {
-    const unscheduledTasks = tasks.filter(task => 
-      !task.isCompleted && 
-      task.dueDate && 
-      !task.assignedSlot
-    )
+    const excludedTags = ['lecture', 'section', 'meeting', 'deadline', 'course'];
+    const unscheduledTasks = tasks.filter(task => {
+      if (task.isCompleted || !task.dueDate || task.assignedSlot) return false;
+      if (Array.isArray(task.tags)) {
+        // Exclude if any tag matches excludedTags
+        return !task.tags.some(tag => excludedTags.includes(tag));
+      }
+      return true;
+    });
 
-    const optimizations = []
+    const optimizations = [];
 
     unscheduledTasks.forEach(task => {
-      const suggestions = scheduler.suggestOptimalSlots(task, 1)
+      const suggestions = scheduler.suggestOptimalSlots(task, 1);
       if (suggestions.length > 0 && suggestions[0].score > 70) {
         optimizations.push({
           type: 'optimize',
           task,
           reason: 'Automatic schedule optimization',
           suggestions
-        })
+        });
       }
-    })
+    });
 
-    setPendingSuggestions(prev => [...prev, ...optimizations])
+    setPendingSuggestions(prev => [...prev, ...optimizations]);
 
     onShowNotification({
       type: 'info',
       message: `Found ${optimizations.length} optimization suggestions`,
       details: 'Review the suggestions below'
-    })
+    });
   }
 
   const getOverdueTasks = () => {
