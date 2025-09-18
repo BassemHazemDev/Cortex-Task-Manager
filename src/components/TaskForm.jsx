@@ -70,14 +70,18 @@ const TaskForm = ({ task, onSave, onCancel }) => {
     if (isNaN(duration) || duration < 1) duration = 1
       // Ensure dueDate and dueTime are saved separately
       let dueDate = formData.dueDate;
-      let dueTime = formData.dueTime || "00:00";
+      let dueTime = formData.dueTime;
       // Validate and format dueDate and dueTime
       if (dueDate) {
         // Ensure dueDate is in YYYY-MM-DD format
-        const d = new Date(`${dueDate}T${dueTime}`);
+        const d = new Date(`${dueDate}${dueTime ? `T${dueTime}` : ''}`);
         const pad = (n) => n.toString().padStart(2, '0');
         dueDate = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-        dueTime = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        if (dueTime) {
+          dueTime = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        } else {
+          dueTime = '';
+        }
       }
       const taskData = {
         ...formData,
