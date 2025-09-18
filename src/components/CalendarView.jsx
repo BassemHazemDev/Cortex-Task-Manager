@@ -288,7 +288,7 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
                 }).map(task => {
                   let bg = (task.priority === 'medium' || task.priority === 'high') ? 'var(--accent)' : 'var(--card)';
                   let color = (task.priority === 'medium' || task.priority === 'high') ? 'var(--accent-foreground)' : 'var(--foreground)';
-                  let opacity = task.priority === 'high' ? 0.8 : 1;
+                  let opacity = task.priority === 'high' ? 1 : 1;
                   if (isOverdue(task)) {
                     bg = isDark ? '#7f1d1d' : '#fee2e2';
                     color = isDark ? '#fee2e2' : '#7f1d1d';
