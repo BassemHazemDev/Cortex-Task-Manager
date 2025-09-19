@@ -5,8 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card.j
 import { Badge } from '@/components/ui/badge.jsx'
 import { TaskScheduler, SchedulingSuggestions, ConflictWarning } from './Scheduler'
 
-const SmartScheduler = ({ tasks, onUpdateTask, onShowNotification }) => {
-  const [scheduler] = useState(() => new TaskScheduler(tasks))
+const SmartScheduler = ({ tasks, onUpdateTask, onShowNotification, availableHours }) => {
+  const [scheduler] = useState(() => new TaskScheduler(tasks, availableHours))
   const [pendingSuggestions, setPendingSuggestions] = useState([])
   const [autoRescheduling] = useState(false)
   const [rescheduleSuggestions, setRescheduleSuggestions] = useState({})
@@ -14,7 +14,10 @@ const SmartScheduler = ({ tasks, onUpdateTask, onShowNotification }) => {
   // Update scheduler when tasks change
   useEffect(() => {
     scheduler.tasks = tasks
-  }, [tasks, scheduler])
+    if (availableHours) {
+      scheduler.availableHours = availableHours
+    }
+  }, [tasks, scheduler, availableHours])
 
   // Check for tasks that need rescheduling
   useEffect(() => {

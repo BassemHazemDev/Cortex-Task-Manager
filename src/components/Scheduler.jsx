@@ -2,18 +2,24 @@
 // This component handles automatic rescheduling and suggestions for optimal task placement
 
 export class TaskScheduler {
-  constructor(tasks = []) {
-    this.tasks = tasks
+  constructor(tasks = [], availableHours = { start: "13:00", end: "22:00" }) {
+    this.tasks = tasks;
+    this.availableHours = availableHours;
   }
 
   // Find available time slots for a task
   findAvailableSlots(task, date = new Date()) {
-    const slots = []
-    const taskDuration = task.estimatedDuration || 60 // minutes
-  const startDate = new Date(date)
-  startDate.setHours(13, 0, 0, 0) // Start at 1 PM
-  const endDate = new Date(date)
-  endDate.setHours(23, 59, 0, 0) // End at 11:59 PM
+    const slots = [];
+    const taskDuration = task.estimatedDuration || 60; // minutes
+    // Use availableHours for start/end
+    const startTimeStr = (this.availableHours && this.availableHours.start) ? this.availableHours.start : "13:00";
+    const endTimeStr = (this.availableHours && this.availableHours.end) ? this.availableHours.end : "22:00";
+    const startDate = new Date(date);
+    const [startHour, startMin] = startTimeStr.split(":").map(Number);
+    startDate.setHours(startHour, startMin, 0, 0);
+    const endDate = new Date(date);
+    const [endHour, endMin] = endTimeStr.split(":").map(Number);
+    endDate.setHours(endHour, endMin, 0, 0);
 
     // Get existing tasks for the date
     const dateStr = date.toISOString().split('T')[0]
@@ -31,19 +37,19 @@ export class TaskScheduler {
       return timeA - timeB
     })
 
-      // If scheduling for today, only suggest slots after current time
-      let currentTime = this.timeToMinutes('13:00')
-      const endTime = this.timeToMinutes('23:59')
-      const now = new Date()
-      const isToday = date.toDateString() === now.toDateString()
-      let minStartTime = currentTime
-      if (isToday) {
-        const nowMinutes = now.getHours() * 60 + now.getMinutes()
-        if (nowMinutes > currentTime) {
-          // Round up to next 30-min increment
-          minStartTime = Math.ceil(nowMinutes / 30) * 30
-        }
+    // If scheduling for today, only suggest slots after current time
+    let currentTime = this.timeToMinutes(startTimeStr);
+    const endTime = this.timeToMinutes(endTimeStr);
+    const now = new Date();
+    const isToday = date.toDateString() === now.toDateString();
+    let minStartTime = currentTime;
+    if (isToday) {
+      const nowMinutes = now.getHours() * 60 + now.getMinutes();
+      if (nowMinutes > currentTime) {
+        // Round up to next 30-min increment
+        minStartTime = Math.ceil(nowMinutes / 30) * 30;
       }
+    }
 
     // Find gaps between existing tasks
     for (let i = 0; i <= existingTasks.length; i++) {

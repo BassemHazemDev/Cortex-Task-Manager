@@ -109,5 +109,5 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 
 ## Acknowledgements
 
-- Project logo: `public/MyDevLogo.png`
+- Project logo: `public/cortex2.png`
 - Built with React, Vite, and PNPM

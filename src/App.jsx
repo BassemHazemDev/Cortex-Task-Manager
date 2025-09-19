@@ -56,6 +56,27 @@ import {
 import "./App.css";
 
 function App() {
+  // User available hours state
+  // Load available hours from localStorage or default
+  const [availableHours, setAvailableHours] = useState(() => {
+    const saved = localStorage.getItem("availableHours");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed.start && parsed.end) return parsed;
+      } catch (e) {
+        // Ignore JSON parse errors
+        console.error("Failed to parse available hours:", e);
+    }
+  }
+    return { start: "13:00", end: "22:00" };
+  });
+  // Save available hours to localStorage whenever they change
+  useEffect(() => {
+    if (availableHours && availableHours.start && availableHours.end) {
+      localStorage.setItem("availableHours", JSON.stringify(availableHours));
+    }
+  }, [availableHours]);
   // Daily tip logic: Save tip index in localStorage so it changes only once per day
   function getDailyTip() {
     const today = new Date().toISOString().split("T")[0];
@@ -77,6 +98,8 @@ function App() {
   const [showTaskForm, setShowTaskForm] = useState(false); // Controls the visibility of the add/edit task modal.
   const [editingTask, setEditingTask] = useState(null); // Holds the task object being edited, or null for a new task.
   const [notifications, setNotifications] = useState([]); // Stores active user notifications.
+  // Settings modal state
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
 
   // Manages the dark/light theme state, persisting the choice in localStorage.
   const [isDarkMode, setIsDarkMode] = useState(() => {
@@ -499,6 +522,16 @@ function App() {
               <Button
                 variant="outline"
                 size="sm"
+                aria-label="Settings"
+                onClick={() => setShowSettingsModal(true)}
+                className="transition-all duration-300 hover:shadow-md active:scale-95"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09a1.65 1.65 0 00-1-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09a1.65 1.65 0 001.51-1 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06a1.65 1.65 0 001.82.33h.09a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51h.09a1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82v.09a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+                Settings
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
                 aria-label={
                   isDarkMode ? "Switch to light mode" : "Switch to dark mode"
                 }
@@ -640,6 +673,7 @@ function App() {
                 tasks={tasks}
                 onUpdateTask={updateTask}
                 onShowNotification={showNotification}
+                availableHours={availableHours}
               />
             )}
           </div>
@@ -672,31 +706,40 @@ function App() {
                         className="bg-card/80 backdrop-blur-sm border border-border/50 rounded-lg shadow-sm p-3 hover:shadow-md cursor-pointer transition-all duration-300 hover:bg-accent/30"
                         onClick={() => openTaskForm(task)}
                       >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-3 flex-1">
+                        <div className="flex items-center justify-between w-full">
+                          <div className="flex items-center space-x-3 flex-1 min-w-0">
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
                                 toggleTaskComplete(task.id);
                               }}
                               className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-300 ${
-                              task.isCompleted
-                              ? "border-[var(--accent-2)] hover:border-[var(--accent-2)]"
-                              : "border-muted-foreground/30 hover:border-[var(--accent-2)]"
+                                task.isCompleted
+                                  ? "border-[var(--accent-2)] hover:border-[var(--accent-2)]"
+                                  : "border-muted-foreground/30 hover:border-[var(--accent-2)]"
                               }`}
                               style={{ background: task.isCompleted ? 'var(--accent-2)' : 'transparent' }}
                             >
                               {task.isCompleted && (
-                                <CheckCircle className="h-3 w-3 text-white"/>
+                                <CheckCircle className="h-3 w-3 text-white" />
                               )}
                             </button>
                             <div className="flex-1 min-w-0">
                               <p
-                                className={`text-sm font-medium truncate ${
+                                className={`text-sm font-medium ${
                                   task.isCompleted
                                     ? "line-through text-muted-foreground"
                                     : ""
                                 }`}
+                                style={{
+                                  whiteSpace: "nowrap",
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                  display: "block",
+                                  width: "100%",
+                                  maxWidth: "100%"
+                                }}
+                                title={task.title}
                               >
                                 {task.title}
                               </p>
@@ -715,7 +758,7 @@ function App() {
                                 ? "default"
                                 : "secondary"
                             }
-                            className="text-xs"
+                            className="text-xs min-w-[60px] text-center"
                           >
                             {task.priority}
                           </Badge>
@@ -793,6 +836,7 @@ function App() {
           </div>
         </div>
 
+
         {/* === MODALS & NOTIFICATIONS (Rendered at the top level) === */}
         {showTaskForm && (
           <TaskForm
@@ -801,6 +845,49 @@ function App() {
             onSave={editingTask ? (data) => updateTask(editingTask.id, data) : addTask}
             onCancel={closeTaskForm}
           />
+        )}
+
+        {/* Settings Modal Placeholder */}
+        {showSettingsModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+            <div className="bg-white dark:bg-gray-900 rounded-xl shadow-lg p-6 min-w-[320px] max-w-[90vw] relative">
+              <h2 className="text-xl font-bold mb-4">Settings</h2>
+                <form
+                  className="space-y-4"
+                  onSubmit={e => {
+                    e.preventDefault();
+                    setShowSettingsModal(false);
+                  }}
+                >
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Available Start Time</label>
+                    <input
+                      type="time"
+                      value={availableHours.start}
+                      onChange={e => setAvailableHours(h => ({ ...h, start: e.target.value }))}
+                      className="border rounded-md px-3 py-2 w-full dark:bg-gray-800"
+                      min="00:00"
+                      max="23:59"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Available End Time</label>
+                    <input
+                      type="time"
+                      value={availableHours.end}
+                      onChange={e => setAvailableHours(h => ({ ...h, end: e.target.value }))}
+                      className="border rounded-md px-3 py-2 w-full dark:bg-gray-800"
+                      min="00:00"
+                      max="23:59"
+                    />
+                  </div>
+                  <div className="flex justify-end gap-2 mt-6">
+                    <Button variant="outline" type="button" onClick={() => setShowSettingsModal(false)}>Cancel</Button>
+                    <Button type="submit" className="bg-primary text-primary-foreground">Save</Button>
+                  </div>
+                </form>
+            </div>
+          </div>
         )}
 
         <NotificationSystem
