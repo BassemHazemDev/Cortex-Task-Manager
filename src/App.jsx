@@ -429,10 +429,20 @@ function App() {
     const now = new Date();
     return tasks.filter((task) => {
       if (task.isCompleted || !task.dueDate) return false;
-      const dueDate = new Date(
-        task.dueDate + (task.dueTime ? `T${task.dueTime}` : "T23:59:59")
-      );
-      return dueDate < now;
+      if (!task.dueTime) {
+        // No dueTime: overdue if the day is over
+        const dayEnd = new Date(task.dueDate + 'T23:59:59');
+        return now > dayEnd;
+      }
+      const start = new Date(task.dueDate + 'T' + task.dueTime);
+      if (!task.estimatedDuration || isNaN(task.estimatedDuration) || task.estimatedDuration <= 0) {
+        // No duration: overdue as soon as due time is met
+        return now > start;
+      } else {
+        // Has duration: overdue after duration ends
+        const end = new Date(start.getTime() + task.estimatedDuration * 60000);
+        return now > end;
+      }
     });
   };
 
@@ -703,7 +713,7 @@ function App() {
                     {getTasksForDate(new Date()).map((task) => (
                       <div
                         key={task.id}
-                        className="bg-card/80 backdrop-blur-sm border border-border/50 rounded-lg shadow-sm p-3 hover:shadow-md cursor-pointer transition-all duration-300 hover:bg-accent/30"
+                        className="bg-card/80 backdrop-blur-sm border border-border/50 rounded-lg shadow-sm p-3 cursor-pointer transition-all duration-300 hover:scale-[1.02] hover:shadow-lg hover:bg-accent/30"
                         onClick={() => openTaskForm(task)}
                       >
                         <div className="flex items-center justify-between w-full">

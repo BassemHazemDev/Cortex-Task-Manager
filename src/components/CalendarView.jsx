@@ -215,7 +215,7 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
                       return (
                         <div
                           key={task.id}
-                          className="text-xs p-1 rounded truncate shadow-md"
+                          className="text-xs p-1 rounded truncate shadow-md transition-all duration-200 cursor-pointer hover:scale-[1.03] hover:shadow-lg hover:bg-[var(--accent)] hover:text-[var(--accent-foreground)]"
                           style={{ background: bg, color, textDecoration: task.isCompleted ? 'line-through' : 'none', opacity }}
                           onClick={(e) => {
                             e.stopPropagation();
@@ -256,7 +256,7 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
                   const completed = selectedDayTasks.filter(t => t.isCompleted).length;
                   const percent = Math.round((completed / selectedDayTasks.length) * 100);
                   return (
-                    <div className="w-full">
+                    <div style={{ width: '80%', margin: '0 auto' }}>
                       <div className="flex justify-between items-center mb-1">
                         <span className="text-sm font-medium" style={{ color: 'var(--muted-foreground)' }}>
                           Progress: {completed} / {selectedDayTasks.length} tasks
@@ -286,9 +286,13 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
                   if (!b.dueTime) return -1;
                   return a.dueTime.localeCompare(b.dueTime);
                 }).map(task => {
-                  let bg = (task.priority === 'medium' || task.priority === 'high') ? 'var(--accent)' : 'var(--card)';
-                  let color = (task.priority === 'medium' || task.priority === 'high') ? 'var(--accent-foreground)' : 'var(--foreground)';
-                  let opacity = task.priority === 'high' ? 1 : 1;
+                  let bg = task.priority === 'high'
+                    ? 'var(--accent-2)'
+                    : task.priority === 'medium'
+                      ? 'var(--accent)'
+                      : 'var(--card)';
+                  let color = (task.priority === 'high' || task.priority === 'medium') ? 'var(--accent-foreground)' : 'var(--foreground)';
+                  let opacity = 1;
                   if (isOverdue(task)) {
                     bg = isDark ? '#7f1d1d' : '#fee2e2';
                     color = isDark ? '#fee2e2' : '#7f1d1d';
@@ -297,7 +301,7 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
                   return (
                     <div
                       key={task.id}
-                      className="flex items-center justify-between p-3 rounded-lg hover:shadow-md cursor-pointer transition-colors shadow-md"
+                      className="flex items-center justify-between p-3 rounded-lg shadow-md cursor-pointer transition-all duration-200 hover:scale-[1.03] hover:shadow-lg hover:bg-[var(--accent)] hover:text-[var(--accent-foreground)]"
                       style={{ background: bg, color, opacity }}
                       onClick={() => onTaskClick(task)}
                     >
@@ -308,7 +312,7 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
                             onToggleComplete(task.id);
                           }}
                           className="w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all"
-                          style={{ background: task.isCompleted ? 'var(--accent-2)' : bg, borderColor: task.isCompleted ? 'var(--accent-2)' : 'var(--primary-muted)' }}
+                          style={{ background: 'var(--background)', borderColor: 'var(--primary-muted)' }}
                         >
                           {task.isCompleted && <CheckCircle className="h-3 w-3" style={{ color: 'var(--success-foreground, #fff)' }} />}
                         </button>
@@ -331,9 +335,12 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
                         </div>
                       </div>
                       <div className="flex items-center space-x-3 flex-shrink-0">
-                         {task.dueTime && (
-                            <p className="text-sm px-2 py-1 rounded-md" style={{ background: 'var(--muted)', color: 'var(--muted-foreground)' }}>{formatTime12(task.dueTime)}</p>
-                          )}
+                        {task.dueTime && (
+                          <p className="text-sm px-2 py-1 rounded-md" style={{ background: 'var(--muted)', color: 'var(--muted-foreground)' }}>{formatTime12(task.dueTime)}</p>
+                        )}
+                        {task.estimatedDuration && (
+                          <p className="text-sm px-2 py-1 rounded-md" style={{ background: 'var(--muted)', color: 'var(--muted-foreground)' }}>{task.estimatedDuration}m</p>
+                        )}
                         <Badge variant={
                           task.priority === 'high' ? 'default' : 
                           task.priority === 'medium' ? 'default' : 
