@@ -57,6 +57,10 @@ import "./App.css";
 import Footer from "./components/Footer";
 
 function App() {
+  function playCompleteSound() {
+    const audio = new window.Audio('/complete.mp3');
+    audio.play();
+  }
   // User available hours state
   // Load available hours from localStorage or default
   const [availableHours, setAvailableHours] = useState(() => {
@@ -311,6 +315,8 @@ function App() {
         task.id === taskId ? { ...task, isCompleted: newStatus } : task
       )
     );
+
+    if (newStatus) playCompleteSound();
 
     showNotification({
       type: "success",

@@ -12,6 +12,10 @@ const Badge = ({ children, variant, ...props }) => <span data-variant={variant} 
 
 
 const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggleComplete }) => {
+  function playCompleteSound() {
+    const audio = new window.Audio('/complete.mp3');
+    audio.play();
+  }
   // Helper to check if a task is overdue (after its duration ends)
   function isOverdue(task) {
     if (!task.dueDate || task.isCompleted) return false;
@@ -309,6 +313,7 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
+                            if (!task.isCompleted) playCompleteSound();
                             onToggleComplete(task.id);
                           }}
                           className="w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all"

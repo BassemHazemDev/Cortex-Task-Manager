@@ -36,6 +36,10 @@ function TagFilter({ tasks, tagFilter, setTagFilter }) {
 }
 
 const TaskList = ({ tasks, onTaskClick, onToggleComplete, onDeleteTask }) => {
+  function playCompleteSound() {
+    const audio = new window.Audio('/complete.mp3');
+    audio.play();
+  }
   const [search, setSearch] = useState('');
   // Converts a time string (HH:mm) to 12-hour format with AM/PM for better readability
   function formatTime12(timeStr, dateStr) {
@@ -259,8 +263,9 @@ const TaskList = ({ tasks, onTaskClick, onToggleComplete, onDeleteTask }) => {
                   <div className="flex items-start space-x-3 flex-1">
                     <button
                       onClick={(e) => {
-                        e.stopPropagation()
-                        onToggleComplete(task.id)
+                        e.stopPropagation();
+                        if (!task.isCompleted) playCompleteSound();
+                        onToggleComplete(task.id);
                       }}
                       className={`mt-1 w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${
                         task.isCompleted 
