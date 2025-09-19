@@ -167,47 +167,51 @@ const TaskList = ({ tasks, onTaskClick, onToggleComplete, onDeleteTask }) => {
   <div className="space-y-6" style={{ background: 'var(--card)', color: 'var(--card-foreground)' }}>
   {/* Task filters, search bar, and sorting controls */}
       <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
+        <CardHeader className={"task-container-1"}>
+          <div className="flex items-center justify-between task-container-1">
             <CardTitle className="flex items-center space-x-2">
               <Filter className="h-5 w-5 text-[var(--primary)]" />
               <span>Task List</span>
             </CardTitle>
-            <div className="flex space-x-2">
-              <div className="flex flex-col w-full gap-2">
-                <div className="flex space-x-2 mb-2">
+            <div className="flex space-x-2 task-container-1">
+              <div className="flex flex-col w-full gap-2 task-container-1">
+                <div className="flex space-x-2 mb-2 task-container-1">
+                  <div className="flex space-x-2 mb-2 task-container-2">
                   <Select value={filter} onValueChange={setFilter}>
                     <SelectTrigger className="w-32">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Statuses</SelectItem>
-                      <SelectItem value="pending">Pending</SelectItem>
-                      <SelectItem value="completed">Completed</SelectItem>
+                    <SelectContent className="select-item">
+                      <SelectItem value="all" className="select-item">All Statuses</SelectItem>
+                      <SelectItem value="pending" className="select-item">Pending</SelectItem>
+                      <SelectItem value="completed" className="select-item">Completed</SelectItem>
                     </SelectContent>
                   </Select>
                   <Select value={dayFilter} onValueChange={setDayFilter}>
-                    <SelectTrigger className="w-40">
+                    <SelectTrigger className="w-32">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Dates</SelectItem>
-                      <SelectItem value="today">Today</SelectItem>
-                      <SelectItem value="tomorrow">Tomorrow</SelectItem>
-                      <SelectItem value="dayAfterTomorrow">Day After Tomorrow</SelectItem>
-                      <SelectItem value="thisWeek">This Week</SelectItem>
-                      <SelectItem value="thisMonth">This Month</SelectItem>
+                    <SelectContent className="select-item">
+                      <SelectItem value="all" className="select-item">All Dates</SelectItem>
+                      <SelectItem value="today" className="select-item">Today</SelectItem>
+                      <SelectItem value="tomorrow" className="select-item">Tomorrow</SelectItem>
+                      <SelectItem value="dayAfterTomorrow" className="select-item">Day After Tomorrow</SelectItem>
+                      <SelectItem value="thisWeek" className="select-item">This Week</SelectItem>
+                      <SelectItem value="thisMonth" className="select-item">This Month</SelectItem>
                     </SelectContent>
                   </Select>
+                  </div>
+                  
+                  <div className="flex space-x-2 mb-2 task-container-2">
                   {/* Tag filter dropdown */}
                   <Select value={tagFilter[0] || "all"} onValueChange={tag => setTagFilter(tag === "all" ? [] : [tag])}>
                     <SelectTrigger className="w-32">
                       <SelectValue>{tagFilter[0] || "All Tags"}</SelectValue>
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All Tags</SelectItem>
+                      <SelectItem value="all" className="select-item">All Tags</SelectItem>
                       {Array.from(new Set(tasks.flatMap(task => Array.isArray(task.tags) ? task.tags : []))).map(tag => (
-                        <SelectItem key={tag} value={tag}>{tag}</SelectItem>
+                        <SelectItem key={tag} value={tag} className="select-item">{tag}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -215,14 +219,15 @@ const TaskList = ({ tasks, onTaskClick, onToggleComplete, onDeleteTask }) => {
                     <SelectTrigger className="w-32">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="dueDate">Due Date</SelectItem>
-                      <SelectItem value="priority">Priority</SelectItem>
-                      <SelectItem value="title">Title</SelectItem>
+                    <SelectContent className="select-item">
+                      <SelectItem value="dueDate" className="select-item">Due Date</SelectItem>
+                      <SelectItem value="priority" className="select-item">Priority</SelectItem>
+                      <SelectItem value="title" className="select-item">Title</SelectItem>
                     </SelectContent>
                   </Select>
+                  </div>
                 </div>
-                <div className="flex justify-center w-full">
+                <div className="flex justify-center w-full task-container-search">
                   <input
                     type="text"
                     value={search}

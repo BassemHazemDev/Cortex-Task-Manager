@@ -516,9 +516,9 @@ function App() {
     <div className="min-h-screen serene-gradient">
       <div className="container mx-auto px-4 py-6 max-w-7xl">
         {/* === HEADER SECTION === */}
-        <header className="mb-8">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
+        <header className="mb-8 header">
+          <div className="flex items-center justify-between w-full header-content">
+            <div className="flex items-center space-x-4 header-logo">
               <div className="p-3 bg-primary/10 rounded-2xl backdrop-blur-sm">
                 <img
                   src={isDarkMode ? "/cortex2.png" : "/cortex1.png"}
@@ -535,13 +535,15 @@ function App() {
                 </p>
               </div>
             </div>
-            <div className="flex items-center space-x-3">
-              <Button
+            <div className="flex items-center space-x-3 header-controls">
+              {/* Settings and Dark Mode */}
+              <div className="flex items-center space-x-2 header-buttons">
+                <Button
                 variant="outline"
                 size="sm"
                 aria-label="Settings"
                 onClick={() => setShowSettingsModal(true)}
-                className="transition-all duration-300 hover:shadow-md active:scale-95"
+                className="transition-all duration-300 hover:shadow-md active:scale-95 button"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09a1.65 1.65 0 00-1-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09a1.65 1.65 0 001.51-1 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06a1.65 1.65 0 001.82.33h.09a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51h.09a1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82v.09a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
                 Settings
@@ -553,7 +555,7 @@ function App() {
                   isDarkMode ? "Switch to light mode" : "Switch to dark mode"
                 }
                 onClick={toggleDarkMode}
-                className="transition-all duration-300 hover:shadow-md active:scale-95"
+                className="transition-all duration-300 hover:shadow-md active:scale-95 button"
               >
                 {isDarkMode ? (
                   <svg
@@ -589,12 +591,16 @@ function App() {
                 )}
                 {isDarkMode ? "Light" : "Dark"} Mode
               </Button>
-              <div className="flex items-center space-x-2">
+              </div>
+              
+
+              {/* Export/Import group */}
+              <div className="flex items-center space-x-2 header-buttons">
                 <Button
                   onClick={handleExportTasks}
                   variant="outline"
                   size="sm"
-                  className="transition-all duration-300 hover:shadow-md active:scale-95"
+                  className="transition-all duration-300 hover:shadow-md active:scale-95 button"
                 >
                   <Upload className="h-4 w-4 mr-2" />
                   Export
@@ -610,7 +616,7 @@ function App() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="transition-all duration-300 hover:shadow-md active:scale-95"
+                    className="transition-all duration-300 hover:shadow-md active:scale-95 button relative-button"
                     asChild
                   >
                     <label htmlFor="import-tasks" className="cursor-pointer">
@@ -620,9 +626,10 @@ function App() {
                   </Button>
                 </div>
               </div>
+              {/* Add Task button */}
               <Button
                 onClick={() => openTaskForm()}
-                className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg transition-all duration-300 hover:shadow-md active:scale-95"
+                className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg transition-all duration-300 hover:shadow-md active:scale-95 button"
                 size="lg"
               >
                 <Plus className="h-5 w-5 mr-2" />

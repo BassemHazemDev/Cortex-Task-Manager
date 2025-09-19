@@ -1,7 +1,7 @@
 
 
 const Footer = () => (
-  <footer className="w-full flex justify-center py-8 px-32 mt-12 bg-transparent">
+  <footer className="w-full flex justify-center py-8 px-32 mt-12 bg-transparent footer-container">
     <div
       className="max-w-7xl w-full mx-auto rounded-2xl shadow-lg border border-border bg-card text-card-foreground dark:bg-[#18181b] dark:text-gray-200 px-6 py-6 flex flex-col md:flex-row items-center justify-between gap-4"
       style={{

@@ -224,7 +224,7 @@ const SmartScheduler = ({ tasks, onUpdateTask, onShowNotification, availableHour
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between optimize-container">
             <div>
               <p className="text-sm text-gray-600 mb-2">
                 Let AI optimize your schedule for better productivity
