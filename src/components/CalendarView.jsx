@@ -312,7 +312,7 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
                             onToggleComplete(task.id);
                           }}
                           className="w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all"
-                          style={{ background: 'var(--background)', borderColor: 'var(--primary-muted)' }}
+                          style={{ background: task.isCompleted ? 'var(--accent-2)' : 'var(--background)', borderColor: task.isCompleted ? 'var(--accent-2)' : 'var(--primary-muted)' }}
                         >
                           {task.isCompleted && <CheckCircle className="h-3 w-3" style={{ color: 'var(--success-foreground, #fff)' }} />}
                         </button>

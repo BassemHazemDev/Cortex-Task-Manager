@@ -166,7 +166,7 @@ const TaskList = ({ tasks, onTaskClick, onToggleComplete, onDeleteTask }) => {
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center space-x-2">
-              <Filter className="h-5 w-5 text-blue-600" />
+              <Filter className="h-5 w-5 text-[var(--primary)]" />
               <span>Task List</span>
             </CardTitle>
             <div className="flex space-x-2">

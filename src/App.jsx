@@ -54,6 +54,7 @@ import {
   importTasks,
 } from "./utils/storage"; // Utility functions for data handling
 import "./App.css";
+import Footer from "./components/Footer";
 
 function App() {
   // User available hours state
@@ -905,6 +906,7 @@ function App() {
           onDismiss={dismissNotification}
         />
       </div>
+      <Footer />
     </div>
   );
 }
