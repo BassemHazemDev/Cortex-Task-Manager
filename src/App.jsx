@@ -640,7 +640,7 @@ function App() {
         </header>
 
         {/* === NAVIGATION TABS === */}
-        <div className="flex space-x-2 mb-8">
+        <div className="flex space-x-2 mb-8 navigation-container">
           <Button
             variant={currentView === "calendar" ? "default" : "outline"}
             onClick={() => setCurrentView("calendar")}

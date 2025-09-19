@@ -593,4 +593,12 @@ input:focus, textarea:focus, select:focus {
     gap: 1rem;
     align-items: center;
   }
+  .navigation-container{
+    width: 100%;
+    padding: 1rem 0.5rem !important;
+    overflow: hidden;
+  }
+  .navigation-container button{
+    padding: 1rem 0.5rem !important;
+  }
 }
