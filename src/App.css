@@ -610,4 +610,11 @@ input:focus, textarea:focus, select:focus {
   .navigation-inner button{
     margin: 0rem 1rem;
   }
+
+  .calendar-card-content{
+    display: none;
+  }
+  .calendar-card{
+    min-height: 60px;
+  }
 }

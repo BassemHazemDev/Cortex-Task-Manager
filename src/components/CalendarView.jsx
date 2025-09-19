@@ -192,14 +192,14 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
               return (
                 <div
                   key={index}
-                  className="min-h-[100px] p-2 border rounded-lg cursor-pointer transition-all duration-200 hover:shadow-lg hover:-translate-y-1"
+                  className="min-h-[100px] p-2 border rounded-lg cursor-pointer transition-all duration-200 hover:shadow-lg hover:-translate-y-1 calendar-card"
                   style={{ background: dayBg, borderColor: dayBorder, color: dayText }}
                   onClick={() => onDateSelect(date)}
                 >
                   <div className="text-sm font-semibold text-right mb-1" style={{ color: dayText }}>
                     {date.getDate()}
                   </div>
-                  <div className="space-y-1">
+                  <div className="space-y-1 calendar-card-content">
                     {dayTasks.slice(0, 2).map(task => {
                       // Renders each task in the day cell with appropriate color and click handler
                       let bg = task.priority === 'medium'
