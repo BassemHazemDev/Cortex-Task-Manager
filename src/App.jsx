@@ -58,7 +58,7 @@ import Footer from "./components/Footer";
 
 function App() {
   function playCompleteSound() {
-    const audio = new window.Audio('/complete.mp3');
+    const audio = new window.Audio("/complete.mp3");
     audio.play();
   }
   // User available hours state
@@ -72,8 +72,8 @@ function App() {
       } catch (e) {
         // Ignore JSON parse errors
         console.error("Failed to parse available hours:", e);
+      }
     }
-  }
     return { start: "13:00", end: "22:00" };
   });
   // Save available hours to localStorage whenever they change
@@ -91,7 +91,10 @@ function App() {
     }
     // Pick a new random tip index for today
     const newIndex = Math.floor(Math.random() * dailyTips.length);
-    localStorage.setItem("dailyTipIndex", JSON.stringify({ date: today, index: newIndex }));
+    localStorage.setItem(
+      "dailyTipIndex",
+      JSON.stringify({ date: today, index: newIndex })
+    );
     return dailyTips[newIndex];
   }
   // ===========================================================================
@@ -157,11 +160,20 @@ function App() {
    */
   // Helper to check for time conflicts
   function hasTimeConflict(newTask, existingTasks) {
-    if (!newTask.dueDate || !newTask.dueTime || !newTask.estimatedDuration) return false;
+    if (!newTask.dueDate || !newTask.dueTime || !newTask.estimatedDuration)
+      return false;
     const newStart = new Date(`${newTask.dueDate}T${newTask.dueTime}`);
-    const newEnd = new Date(newStart.getTime() + newTask.estimatedDuration * 60000);
-    return existingTasks.some(task => {
-      if (task.isCompleted || task.dueDate !== newTask.dueDate || !task.dueTime || !task.estimatedDuration) return false;
+    const newEnd = new Date(
+      newStart.getTime() + newTask.estimatedDuration * 60000
+    );
+    return existingTasks.some((task) => {
+      if (
+        task.isCompleted ||
+        task.dueDate !== newTask.dueDate ||
+        !task.dueTime ||
+        !task.estimatedDuration
+      )
+        return false;
       const start = new Date(`${task.dueDate}T${task.dueTime}`);
       const end = new Date(start.getTime() + task.estimatedDuration * 60000);
       // Overlap: startA < endB && startB < endA
@@ -171,19 +183,31 @@ function App() {
 
   const addTask = (taskData) => {
     // Check for time conflict for single and repeated tasks
-    if (taskData.repeatUntil && taskData.repeatFrequency !== "none" && taskData.dueDate) {
+    if (
+      taskData.repeatUntil &&
+      taskData.repeatFrequency !== "none" &&
+      taskData.dueDate
+    ) {
       const repeatedTasks = [];
       // Parse the initial date and time
-      let currentDate = new Date(`${taskData.dueDate}T${taskData.dueTime || "00:00"}`);
-      const repeatUntilDate = new Date(`${taskData.repeatUntil}T${taskData.dueTime || "00:00"}`);
+      let currentDate = new Date(
+        `${taskData.dueDate}T${taskData.dueTime || "00:00"}`
+      );
+      const repeatUntilDate = new Date(
+        `${taskData.repeatUntil}T${taskData.dueTime || "00:00"}`
+      );
       let i = 0;
       let conflictFound = false;
 
       while (currentDate <= repeatUntilDate) {
         // Format date and time for each repeated task
-        const pad = (n) => n.toString().padStart(2, '0');
-        const candidateDate = `${currentDate.getFullYear()}-${pad(currentDate.getMonth() + 1)}-${pad(currentDate.getDate())}`;
-        const candidateTime = `${pad(currentDate.getHours())}:${pad(currentDate.getMinutes())}`;
+        const pad = (n) => n.toString().padStart(2, "0");
+        const candidateDate = `${currentDate.getFullYear()}-${pad(
+          currentDate.getMonth() + 1
+        )}-${pad(currentDate.getDate())}`;
+        const candidateTime = `${pad(currentDate.getHours())}:${pad(
+          currentDate.getMinutes()
+        )}`;
         const candidate = {
           ...taskData,
           dueDate: candidateDate,
@@ -266,7 +290,7 @@ function App() {
    */
   const updateTask = (taskId, updates) => {
     // Exclude the current task from conflict check
-    const otherTasks = tasks.filter(task => task.id !== taskId);
+    const otherTasks = tasks.filter((task) => task.id !== taskId);
     if (hasTimeConflict(updates, otherTasks)) {
       showNotification({
         type: "error",
@@ -438,11 +462,15 @@ function App() {
       if (task.isCompleted || !task.dueDate) return false;
       if (!task.dueTime) {
         // No dueTime: overdue if the day is over
-        const dayEnd = new Date(task.dueDate + 'T23:59:59');
+        const dayEnd = new Date(task.dueDate + "T23:59:59");
         return now > dayEnd;
       }
-      const start = new Date(task.dueDate + 'T' + task.dueTime);
-      if (!task.estimatedDuration || isNaN(task.estimatedDuration) || task.estimatedDuration <= 0) {
+      const start = new Date(task.dueDate + "T" + task.dueTime);
+      if (
+        !task.estimatedDuration ||
+        isNaN(task.estimatedDuration) ||
+        task.estimatedDuration <= 0
+      ) {
         // No duration: overdue as soon as due time is met
         return now > start;
       } else {
@@ -501,11 +529,11 @@ function App() {
    * @returns {string} The formatted time string.
    */
   function formatTime12(timeStr) {
-    if (!timeStr) return '';
-    const [h, m] = timeStr.split(':').map(Number);
+    if (!timeStr) return "";
+    const [h, m] = timeStr.split(":").map(Number);
     let hour = h % 12 || 12;
-    const ampm = h < 12 ? 'AM' : 'PM';
-    return `${hour}:${m.toString().padStart(2, '0')} ${ampm}`;
+    const ampm = h < 12 ? "AM" : "PM";
+    return `${hour}:${m.toString().padStart(2, "0")} ${ampm}`;
   }
 
   // ===========================================================================
@@ -523,7 +551,11 @@ function App() {
                 <img
                   src={isDarkMode ? "/cortex2.png" : "/cortex1.png"}
                   alt="Cortex Logo"
-                  style={{ width: '32px', height: '32px', objectFit: 'contain' }}
+                  style={{
+                    width: "32px",
+                    height: "32px",
+                    objectFit: "contain",
+                  }}
                 />
               </div>
               <div>
@@ -539,25 +571,12 @@ function App() {
               {/* Settings and Dark Mode */}
               <div className="flex items-center space-x-2 header-buttons">
                 <Button
-                variant="outline"
-                size="sm"
-                aria-label="Settings"
-                onClick={() => setShowSettingsModal(true)}
-                className="transition-all duration-300 hover:shadow-md active:scale-95 button"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09a1.65 1.65 0 00-1-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09a1.65 1.65 0 001.51-1 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06a1.65 1.65 0 001.82.33h.09a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51h.09a1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82v.09a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
-                Settings
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                aria-label={
-                  isDarkMode ? "Switch to light mode" : "Switch to dark mode"
-                }
-                onClick={toggleDarkMode}
-                className="transition-all duration-300 hover:shadow-md active:scale-95 button"
-              >
-                {isDarkMode ? (
+                  variant="outline"
+                  size="sm"
+                  aria-label="Settings"
+                  onClick={() => setShowSettingsModal(true)}
+                  className="transition-all duration-300 hover:shadow-md active:scale-95 button"
+                >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     className="h-4 w-4 mr-2"
@@ -565,34 +584,60 @@ function App() {
                     viewBox="0 0 24 24"
                     stroke="currentColor"
                   >
-                    <circle cx="12" cy="12" r="5" />
+                    <circle cx="12" cy="12" r="3" />
                     <path
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       strokeWidth={2}
-                      d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"
+                      d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09a1.65 1.65 0 00-1-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09a1.65 1.65 0 001.51-1 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06a1.65 1.65 0 001.82.33h.09a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51h.09a1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82v.09a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"
                     />
                   </svg>
-                ) : (
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-4 w-4 mr-2"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M21 12.79A9 9 0 1111.21 3a7 7 0 009.79 9.79z"
-                    />
-                  </svg>
-                )}
-                {isDarkMode ? "Light" : "Dark"} Mode
-              </Button>
+                  Settings
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  aria-label={
+                    isDarkMode ? "Switch to light mode" : "Switch to dark mode"
+                  }
+                  onClick={toggleDarkMode}
+                  className="transition-all duration-300 hover:shadow-md active:scale-95 button"
+                >
+                  {isDarkMode ? (
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-4 w-4 mr-2"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <circle cx="12" cy="12" r="5" />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"
+                      />
+                    </svg>
+                  ) : (
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-4 w-4 mr-2"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M21 12.79A9 9 0 1111.21 3a7 7 0 009.79 9.79z"
+                      />
+                    </svg>
+                  )}
+                  {isDarkMode ? "Light" : "Dark"} Mode
+                </Button>
               </div>
-              
 
               {/* Export/Import group */}
               <div className="flex items-center space-x-2 header-buttons">
@@ -641,22 +686,24 @@ function App() {
 
         {/* === NAVIGATION TABS === */}
         <div className="flex space-x-2 mb-8 navigation-container">
-          <Button
-            variant={currentView === "calendar" ? "default" : "outline"}
-            onClick={() => setCurrentView("calendar")}
-            className="flex items-center space-x-2 transition-all duration-300 hover:shadow-md active:scale-95"
-          >
-            <Calendar className="h-4 w-4" />
-            <span>Calendar</span>
-          </Button>
-          <Button
-            variant={currentView === "tasks" ? "default" : "outline"}
-            onClick={() => setCurrentView("tasks")}
-            className="flex items-center space-x-2 transition-all duration-300 hover:shadow-md active:scale-95"
-          >
-            <CheckCircle className="h-4 w-4" />
-            <span>Tasks</span>
-          </Button>
+          <div className="flex space-x-2 navigation-inner">
+            <Button
+              variant={currentView === "calendar" ? "default" : "outline"}
+              onClick={() => setCurrentView("calendar")}
+              className="flex items-center space-x-2 transition-all duration-300 hover:shadow-md active:scale-95 calendar-button"
+            >
+              <Calendar className="h-4 w-4" />
+              <span>Calendar</span>
+            </Button>
+            <Button
+              variant={currentView === "tasks" ? "default" : "outline"}
+              onClick={() => setCurrentView("tasks")}
+              className="flex items-center space-x-2 transition-all duration-300 hover:shadow-md active:scale-95"
+            >
+              <CheckCircle className="h-4 w-4" />
+              <span>Tasks</span>
+            </Button>
+          </div>
           <Button
             variant={currentView === "scheduler" ? "default" : "outline"}
             onClick={() => setCurrentView("scheduler")}
@@ -742,7 +789,11 @@ function App() {
                                   ? "border-[var(--accent-2)] hover:border-[var(--accent-2)]"
                                   : "border-muted-foreground/30 hover:border-[var(--accent-2)]"
                               }`}
-                              style={{ background: task.isCompleted ? 'var(--accent-2)' : 'transparent' }}
+                              style={{
+                                background: task.isCompleted
+                                  ? "var(--accent-2)"
+                                  : "transparent",
+                              }}
                             >
                               {task.isCompleted && (
                                 <CheckCircle className="h-3 w-3 text-white" />
@@ -761,7 +812,7 @@ function App() {
                                   textOverflow: "ellipsis",
                                   display: "block",
                                   width: "100%",
-                                  maxWidth: "100%"
+                                  maxWidth: "100%",
                                 }}
                                 title={task.title}
                               >
@@ -860,13 +911,14 @@ function App() {
           </div>
         </div>
 
-
         {/* === MODALS & NOTIFICATIONS (Rendered at the top level) === */}
         {showTaskForm && (
           <TaskForm
             task={editingTask}
             initialDate={showTaskForm.initialDate}
-            onSave={editingTask ? (data) => updateTask(editingTask.id, data) : addTask}
+            onSave={
+              editingTask ? (data) => updateTask(editingTask.id, data) : addTask
+            }
             onCancel={closeTaskForm}
           />
         )}
@@ -876,40 +928,62 @@ function App() {
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
             <div className="bg-white dark:bg-gray-900 rounded-xl shadow-lg p-6 min-w-[320px] max-w-[90vw] relative">
               <h2 className="text-xl font-bold mb-4">Settings</h2>
-                <form
-                  className="space-y-4"
-                  onSubmit={e => {
-                    e.preventDefault();
-                    setShowSettingsModal(false);
-                  }}
-                >
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Available Start Time</label>
-                    <input
-                      type="time"
-                      value={availableHours.start}
-                      onChange={e => setAvailableHours(h => ({ ...h, start: e.target.value }))}
-                      className="border rounded-md px-3 py-2 w-full dark:bg-gray-800"
-                      min="00:00"
-                      max="23:59"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Available End Time</label>
-                    <input
-                      type="time"
-                      value={availableHours.end}
-                      onChange={e => setAvailableHours(h => ({ ...h, end: e.target.value }))}
-                      className="border rounded-md px-3 py-2 w-full dark:bg-gray-800"
-                      min="00:00"
-                      max="23:59"
-                    />
-                  </div>
-                  <div className="flex justify-end gap-2 mt-6">
-                    <Button variant="outline" type="button" onClick={() => setShowSettingsModal(false)}>Cancel</Button>
-                    <Button type="submit" className="bg-primary text-primary-foreground">Save</Button>
-                  </div>
-                </form>
+              <form
+                className="space-y-4"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  setShowSettingsModal(false);
+                }}
+              >
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Available Start Time
+                  </label>
+                  <input
+                    type="time"
+                    value={availableHours.start}
+                    onChange={(e) =>
+                      setAvailableHours((h) => ({
+                        ...h,
+                        start: e.target.value,
+                      }))
+                    }
+                    className="border rounded-md px-3 py-2 w-full dark:bg-gray-800"
+                    min="00:00"
+                    max="23:59"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Available End Time
+                  </label>
+                  <input
+                    type="time"
+                    value={availableHours.end}
+                    onChange={(e) =>
+                      setAvailableHours((h) => ({ ...h, end: e.target.value }))
+                    }
+                    className="border rounded-md px-3 py-2 w-full dark:bg-gray-800"
+                    min="00:00"
+                    max="23:59"
+                  />
+                </div>
+                <div className="flex justify-end gap-2 mt-6">
+                  <Button
+                    variant="outline"
+                    type="button"
+                    onClick={() => setShowSettingsModal(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    className="bg-primary text-primary-foreground"
+                  >
+                    Save
+                  </Button>
+                </div>
+              </form>
             </div>
           </div>
         )}
@@ -925,4 +999,3 @@ function App() {
 }
 
 export default App;
-

@@ -595,10 +595,19 @@ input:focus, textarea:focus, select:focus {
   }
   .navigation-container{
     width: 100%;
-    padding: 1rem 0.5rem !important;
     overflow: hidden;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
   }
   .navigation-container button{
-    padding: 1rem 0.5rem !important;
+    padding: 0.5rem 2rem;
+  }
+  .navigation-container button.calendar-button{
+    padding: 0.5rem 1.3rem;
+  }
+  .navigation-inner button{
+    margin: 0rem 1rem;
   }
 }
