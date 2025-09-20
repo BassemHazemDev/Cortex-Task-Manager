@@ -617,4 +617,13 @@ input:focus, textarea:focus, select:focus {
   .calendar-card{
     min-height: 60px;
   }
+  .card-content-container{
+    display: flex;
+    flex-direction: column;
+  }
+  .card-content-tags{
+    width: 100%;
+    display: flex;
+    justify-content: space-evenly;
+  }
 }
