@@ -258,12 +258,12 @@ const SmartScheduler = ({ tasks, onUpdateTask, onShowNotification, availableHour
 
       {/* Pending Suggestions */}
       {pendingSuggestions.map(suggestion => (
-        <Card key={`${suggestion.task.id}-${suggestion.type}`} className="border-blue-200 bg-blue-50">
+  <Card key={`${suggestion.task.id}-${suggestion.type}`} className="border-blue-200 bg-blue-50 dark:bg-[#1a2332] dark:border-blue-700">
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
-                <Clock className="h-5 w-5 text-blue-600" />
-                <span className="text-blue-800">
+                <Clock className="h-5 w-5 text-blue-600 dark:text-blue-300" />
+                <span className="text-blue-800 dark:text-blue-100">
                   {suggestion.type === 'reschedule' ? 'Reschedule Suggestion' : 'Optimization Suggestion'}
                 </span>
               </div>
@@ -274,25 +274,25 @@ const SmartScheduler = ({ tasks, onUpdateTask, onShowNotification, availableHour
           </CardHeader>
           <CardContent>
             <div className="mb-4">
-              <h4 className="font-medium text-blue-900">{suggestion.task.title}</h4>
-              <p className="text-sm text-blue-700">{suggestion.reason}</p>
+              <h4 className="font-medium text-blue-900 dark:text-blue-100">{suggestion.task.title}</h4>
+              <p className="text-sm text-blue-700 dark:text-blue-200">{suggestion.reason}</p>
             </div>
 
             <div className="space-y-2 mb-4">
               {suggestion.suggestions.slice(0, 3).map((slot, index) => (
                 <div
                   key={index}
-                  className="flex items-center justify-between p-3 bg-white rounded border"
+                  className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded border dark:border-blue-700"
                 >
                   <div className="flex items-center space-x-3">
                     <Badge variant="outline" className="text-blue-600">
                       Score: {slot.score}
                     </Badge>
                     <div>
-                      <p className="font-medium">
+                      <p className="font-medium dark:text-blue-100">
                         {scheduler.formatSlotDescription(slot)}
                       </p>
-                      <p className="text-sm text-gray-600">
+                      <p className="text-sm text-gray-600 dark:text-gray-300">
                         {Math.floor(slot.duration / 60)}h {slot.duration % 60}m available
                       </p>
                     </div>
@@ -300,7 +300,7 @@ const SmartScheduler = ({ tasks, onUpdateTask, onShowNotification, availableHour
                   <Button
                     size="sm"
                     onClick={() => handleAcceptSuggestion(suggestion.task.id, slot)}
-                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                    className="bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-700 dark:hover:bg-blue-800 dark:text-blue-100"
                   >
                     Accept
                   </Button>
@@ -324,10 +324,10 @@ const SmartScheduler = ({ tasks, onUpdateTask, onShowNotification, availableHour
 
       {/* Quick Actions for Overdue Tasks */}
       {overdueTasks.length > 0 && (
-        <Card className="border-red-200 bg-red-50 dark:bg-red-900">
+  <Card className="border-red-200 bg-red-50 dark:bg-[#2a1a1a] dark:border-red-700">
           <CardHeader>
             <CardTitle className="flex items-center space-x-2 text-red-800 dark:text-red-200">
-              <Calendar className="h-5 w-5" />
+              <Calendar className="h-5 w-5 dark:text-red-300" />
               <span>Overdue Tasks</span>
             </CardTitle>
           </CardHeader>
@@ -341,10 +341,10 @@ const SmartScheduler = ({ tasks, onUpdateTask, onShowNotification, availableHour
                 <div key={task.id}>
                   {/* If suggestions are open for this task, show them */}
                   {rescheduleSuggestions[task.id] ? (
-                    <Card className="border-blue-200 bg-blue-50 dark:bg-blue-900 mb-2">
+                    <Card className="border-blue-200 bg-blue-50 dark:bg-[#1a2332] dark:border-blue-700 mb-2">
                       <CardHeader>
                         <CardTitle className="flex items-center space-x-2">
-                          <Clock className="h-5 w-5 text-blue-600 dark:text-blue-200" />
+                          <Clock className="h-5 w-5 text-blue-600 dark:text-blue-300" />
                           <span className="text-blue-800 dark:text-blue-100">Reschedule Suggestions</span>
                         </CardTitle>
                       </CardHeader>
@@ -355,7 +355,7 @@ const SmartScheduler = ({ tasks, onUpdateTask, onShowNotification, availableHour
                         </div>
                         <div className="space-y-2 mb-4">
                           {rescheduleSuggestions[task.id].map((slot, idx) => (
-                            <div key={idx} className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded border">
+                            <div key={idx} className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded border dark:border-blue-700">
                               <div className="flex items-center space-x-3">
                                 <Badge variant="outline" className="text-blue-600 dark:text-blue-200">
                                   Score: {slot.score}
@@ -368,7 +368,7 @@ const SmartScheduler = ({ tasks, onUpdateTask, onShowNotification, availableHour
                               <Button
                                 size="sm"
                                 onClick={() => handleAcceptRescheduleSuggestion(task.id, slot)}
-                                className="bg-blue-600 hover:bg-blue-700 text-white"
+                                className="bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-700 dark:hover:bg-blue-800 dark:text-blue-100"
                               >
                                 Choose
                               </Button>
@@ -380,6 +380,7 @@ const SmartScheduler = ({ tasks, onUpdateTask, onShowNotification, availableHour
                             variant="ghost"
                             size="sm"
                             onClick={() => handleDismissRescheduleSuggestions(task.id)}
+                            className="dark:text-blue-200"
                           >
                             Dismiss
                           </Button>
