@@ -33,6 +33,8 @@ import {
   Sparkles,
   Download,
   Upload,
+  Expand,
+  ChevronsDownUp,
 } from "lucide-react"; // Icon library for a clean UI
 import { Button } from "@/components/ui/button.jsx";
 import {
@@ -98,6 +100,11 @@ function App() {
     return dailyTips[newIndex];
   }
   // ===========================================================================
+  // EXPAND/COLLAPSE CALENDAR STATE (DESKTOP ONLY)
+  // ===========================================================================
+  const [calendarExpanded, setCalendarExpanded] = useState(false);
+  // Detect mobile (simple check)
+  const isMobile = window.matchMedia("(max-width: 1023px)").matches;
   // STATE MANAGEMENT
   // ===========================================================================
   const [tasks, setTasks] = useState([]); // Holds the master list of all tasks.
@@ -684,8 +691,8 @@ function App() {
           </div>
         </header>
 
-        {/* === NAVIGATION TABS === */}
-        <div className="flex space-x-2 mb-8 navigation-container">
+  {/* === NAVIGATION TABS & EXPAND BUTTON === */}
+  <div className="flex space-x-2 mb-8 navigation-container items-center relative">
           <div className="flex space-x-2 navigation-inner">
             <Button
               variant={currentView === "calendar" ? "default" : "outline"}
@@ -712,20 +719,101 @@ function App() {
             <Sparkles className="h-4 w-4" />
             <span>Smart Scheduler</span>
           </Button>
+          {/* Expand/Collapse Calendar Button (Desktop only, right aligned, icon with hover text) */}
+          {!isMobile && currentView === "calendar" && (
+            <div style={{ position: "absolute", right: 0, top: 0, height: "100%", display: "flex", alignItems: "center" }}>
+              <Button
+                variant="outline"
+                size="icon"
+                className="calendar-expand-btn group transition-all duration-300"
+                onClick={() => setCalendarExpanded((v) => !v)}
+                style={{ position: "relative", width: "40px", height: "40px", display: "flex", alignItems: "center", justifyContent: "center" }}
+                aria-label={calendarExpanded ? "Collapse Calendar" : "Expand Calendar"}
+              >
+                {calendarExpanded ? (
+                  <ChevronsDownUp className="h-5 w-5" />
+                ) : (
+                  <Expand className="h-5 w-5" />
+                )}
+                <span
+                  className="calendar-expand-text group-hover:opacity-100 opacity-0 absolute right-full top-1/2 -translate-y-1/2 mr-2 bg-card px-2 py-1 rounded shadow text-xs font-medium transition-opacity duration-300"
+                  style={{ whiteSpace: "nowrap", pointerEvents: "none" }}
+                >
+                  {calendarExpanded ? "Collapse Calendar" : "Expand Calendar"}
+                </span>
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* === MAIN CONTENT AREA === */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        <div
+          className={`main-content-area grid gap-8 ${
+            calendarExpanded && !isMobile
+              ? "grid-cols-1 calendar-expanded"
+              : "grid-cols-1 lg:grid-cols-4"
+          }`}
+        >
           {/* Primary View (Calendar, Task List, Scheduler) */}
-          <div className="lg:col-span-3">
+          <div
+            className={
+              calendarExpanded && !isMobile
+                ? "calendar-expanded-area"
+                : "lg:col-span-3"
+            }
+            style={{
+              transition: "all 0.5s cubic-bezier(0.4,0,0.2,1)",
+            }}
+          >
             {currentView === "calendar" && (
-              <div className="calendar-container">
+              <div
+                className={`calendar-container ${
+                  calendarExpanded && !isMobile ? "expanded" : ""
+                }`}
+                style={{
+                  transition: "all 0.5s cubic-bezier(0.4,0,0.2,1)",
+                }}
+              >
                 <CalendarView
                   selectedDate={selectedDate}
                   onDateSelect={setSelectedDate}
                   tasks={tasks}
                   onTaskClick={openTaskForm}
+                  onCreateDate={(date) => openTaskForm(date, { isNew: true })}
                   onToggleComplete={toggleTaskComplete}
+                  expanded={calendarExpanded && !isMobile}
+                  onTaskDrop={(taskId, newDate) => {
+                    // Find the task
+                    const task = tasks.find((t) => t.id === taskId);
+                    if (!task) return;
+                    // Format new date string
+                    const pad = (n) => n.toString().padStart(2, "0");
+                    const dateStr = `${newDate.getFullYear()}-${pad(newDate.getMonth() + 1)}-${pad(newDate.getDate())}`;
+                    // If date is unchanged, do nothing
+                    if (task.dueDate === dateStr) return;
+                    // Prepare updates
+                    const updates = { ...task, dueDate: dateStr };
+                    // Exclude current task for conflict check
+                    const otherTasks = tasks.filter((t) => t.id !== taskId);
+                    if (hasTimeConflict(updates, otherTasks)) {
+                      showNotification({
+                        type: "error",
+                        message: "Time conflict detected",
+                        details: `This task overlaps with an existing task. Please adjust the time or duration.`,
+                      });
+                      // No update, revert
+                      return;
+                    }
+                    // Update task
+                    setTasks(
+                      tasks.map((t) => (t.id === taskId ? { ...t, dueDate: dateStr } : t))
+                    );
+                    showNotification({
+                      type: "success",
+                      message: "Task moved successfully",
+                      details: `Task "${task.title}" moved to ${dateStr}`,
+                    });
+                  }}
                 />
               </div>
             )}
@@ -750,8 +838,13 @@ function App() {
           </div>
 
           {/* === SIDEBAR === */}
-          <div className="space-y-6">
-            <Card className="bg-card/80 backdrop-blur-sm border border-border/50 rounded-xl shadow-sm hover:scale-[1.02] hover:shadow-lg transition-all duration-300">
+          <div
+            className={`sidebar-area ${calendarExpanded && !isMobile ? "sidebar-below flex-row flex-wrap gap-8" : "space-y-6"}`}
+            style={{
+              transition: "all 0.5s cubic-bezier(0.4,0,0.2,1)",
+            }}
+          >
+            <Card className={`bg-card/80 backdrop-blur-sm border border-border/50 rounded-xl shadow-sm hover:scale-[1.02] hover:shadow-lg transition-all duration-300 sidebar-focus`}>
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
                   <Clock className="h-5 w-5 text-primary" />
@@ -845,7 +938,7 @@ function App() {
               </CardContent>
             </Card>
 
-            <Card className="bg-card/80 backdrop-blur-sm border border-border/50 rounded-xl shadow-sm hover:scale-[1.02] hover:shadow-lg transition-all duration-300">
+            <Card className={`bg-card/80 backdrop-blur-sm border border-border/50 rounded-xl shadow-sm hover:scale-[1.02] hover:shadow-lg transition-all duration-300 sidebar-overview`}>
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
                   <AlertCircle className="h-5 w-5 text-primary" />
@@ -895,7 +988,7 @@ function App() {
               </CardContent>
             </Card>
 
-            <Card className="bg-accent/20 border-accent/30 backdrop-blur-sm rounded-xl shadow-sm hover:scale-[1.02] hover:shadow-lg transition-all duration-300">
+            <Card className={`bg-accent/20 border-accent/30 backdrop-blur-sm rounded-xl shadow-sm hover:scale-[1.02] hover:shadow-lg transition-all duration-300 sidebar-tip`}>
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2 text-accent-foreground">
                   <Sparkles className="h-5 w-5" />

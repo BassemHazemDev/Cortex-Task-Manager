@@ -7,23 +7,24 @@ import { Textarea } from '@/components/ui/textarea.jsx'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.jsx'
 import { Label } from '@/components/ui/label.jsx'
 
-const TaskForm = ({ task, onSave, onCancel }) => {
-  const [formData, setFormData] = useState({
+const TaskForm = ({ task, initialDate, onSave, onCancel }) => {
+  const [formData, setFormData] = useState(() => ({
     title: '',
     description: '',
-    dueDate: '',
+    dueDate: initialDate || '',
     dueTime: '',
     priority: 'medium',
     estimatedDuration: 60,
     tags: [],
   repeatUntil: '', // Optional: date until which the task should repeat
   repeatFrequency: 'none' // Repeat frequency: none, daily, weekly, monthly, yearly
-  })
+  }))
 
 
   const [errors, setErrors] = useState({})
 
   useEffect(() => {
+    // If editing an existing task, populate the form with its data.
     if (task) {
       setFormData({
         title: task.title || '',
@@ -36,8 +37,14 @@ const TaskForm = ({ task, onSave, onCancel }) => {
         repeatUntil: task.repeatUntil || '',
         repeatFrequency: task.repeatFrequency || 'none'
       });
+      return;
     }
-  }, [task]);
+
+    // If creating a new task and an initialDate was provided, prefill the dueDate.
+    if (!task && initialDate) {
+      setFormData(prev => ({ ...prev, dueDate: initialDate }));
+    }
+  }, [task, initialDate]);
 
   const validateForm = () => {
     const newErrors = {}

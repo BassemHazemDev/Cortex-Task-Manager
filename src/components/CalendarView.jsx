@@ -1,4 +1,3 @@
-import { formatDateTimeContext } from '@/lib/utils.js'
 import { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, CheckCircle, Clock } from 'lucide-react';
 
@@ -11,7 +10,9 @@ const CardContent = ({ children, ...props }) => <div {...props}>{children}</div>
 const Badge = ({ children, variant, ...props }) => <span data-variant={variant} {...props}>{children}</span>;
 
 
-const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggleComplete }) => {
+const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggleComplete, expanded, onTaskDrop, onCreateDate }) => {
+  // Drag-and-drop state for dragging task
+  const [draggedTaskId, setDraggedTaskId] = useState(null);
   function playCompleteSound() {
     const audio = new window.Audio('/complete.mp3');
     audio.play();
@@ -77,6 +78,17 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
     return days;
   };
 
+  // Drag event handlers
+  const handleDragStart = (e, taskId) => {
+    setDraggedTaskId(taskId);
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", String(taskId));
+  };
+
+  const handleDragEnd = () => {
+    setDraggedTaskId(null);
+  };
+
   const getTasksForDate = (date) => {
     if (!date) return [];
   // Converts a Date object to a local date string for accurate task filtering
@@ -114,11 +126,13 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
 
   // Converts a time string (HH:mm) to 12-hour format with AM/PM for better readability
   function formatTime12(timeStr) {
-  // Use selectedDate for context
-  if (!timeStr || !selectedDate) return '';
-  const pad = (n) => n.toString().padStart(2, '0');
-  const dateStr = `${selectedDate.getFullYear()}-${pad(selectedDate.getMonth() + 1)}-${pad(selectedDate.getDate())}`;
-  return formatDateTimeContext(dateStr, timeStr);
+    if (!timeStr) return '';
+    let [h, m] = timeStr.split(':').map(Number);
+    let hour = h % 12 || 12;
+    let ampm = h < 12 ? 'AM' : 'PM';
+    // Only show minutes if not zero
+    let time = m === 0 ? `${hour} ${ampm}` : `${hour}:${m.toString().padStart(2, '0')} ${ampm}`;
+    return time;
   }
 
   const days = getDaysInMonth(currentMonth);
@@ -192,15 +206,46 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
               return (
                 <div
                   key={index}
-                  className="min-h-[100px] p-2 border rounded-lg cursor-pointer transition-all duration-200 hover:shadow-lg hover:-translate-y-1 calendar-card"
+                  className={`border rounded-lg cursor-pointer transition-all duration-200 hover:shadow-lg hover:-translate-y-1 calendar-card ${expanded ? 'min-h-[180px] p-4' : 'min-h-[140px] p-2'}`}
                   style={{ background: dayBg, borderColor: dayBorder, color: dayText }}
                   onClick={() => onDateSelect(date)}
+                  onDoubleClick={(e) => {
+                    // Prevent the parent's click handler from toggling selection twice
+                    e.stopPropagation();
+                    // Preferred: notify parent that user wants to create a new task for this date
+                    if (typeof onCreateDate === 'function') {
+                      onCreateDate(date);
+                      return;
+                    }
+                    // Backwards-compatibility: if no onCreateDate provided, try calling onTaskClick with isNew option
+                    if (typeof onTaskClick === 'function') {
+                      try {
+                        onTaskClick(date, { isNew: true });
+                        return;
+                      } catch (err) {
+                        console.warn('onTaskClick date create failed, falling back to onDateSelect:', err);
+                      }
+                    }
+                    // Final fallback: just select the date
+                    onDateSelect(date);
+                  }}
+                  onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    const droppedTaskId = e.dataTransfer.getData("text/plain");
+                    if (droppedTaskId) {
+                      // Pass to parent for conflict logic
+                      if (typeof onTaskDrop === 'function') {
+                        onTaskDrop(Number(droppedTaskId), date);
+                      }
+                    }
+                  }}
                 >
                   <div className="text-sm font-semibold text-right mb-1" style={{ color: dayText }}>
                     {date.getDate()}
                   </div>
                   <div className="space-y-1 calendar-card-content">
-                    {dayTasks.slice(0, 2).map(task => {
+                    {(expanded ? dayTasks : dayTasks.slice(0, 2)).map(task => {
                       // Renders each task in the day cell with appropriate color and click handler
                       let bg = task.priority === 'medium'
                         ? 'var(--accent)'
@@ -219,18 +264,26 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
                       return (
                         <div
                           key={task.id}
-                          className="text-xs p-1 rounded truncate shadow-md transition-all duration-200 cursor-pointer hover:scale-[1.03] hover:shadow-lg hover:bg-[var(--accent)] hover:text-[var(--accent-foreground)]"
-                          style={{ background: bg, color, textDecoration: task.isCompleted ? 'line-through' : 'none', opacity }}
+                          className={`text-xs p-1 rounded shadow-md transition-all duration-200 cursor-pointer hover:scale-[1.03] hover:shadow-lg hover:bg-[var(--accent)] hover:text-[var(--accent-foreground)]`}
+                          style={{ background: bg, color, textDecoration: task.isCompleted ? 'line-through' : 'none', display: 'flex', alignItems: 'flex-start', gap: expanded ? '0.15rem' : '0', flexDirection: expanded && task.title && task.title.length > 18 ? 'column' : 'row', opacity: draggedTaskId === task.id ? 0.5 : opacity }}
                           onClick={(e) => {
                             e.stopPropagation();
                             onTaskClick(task);
                           }}
+                          draggable
+                          onDragStart={(e) => handleDragStart(e, task.id)}
+                          onDragEnd={handleDragEnd}
                         >
-                          {task.title}
+                          <span style={{ wordBreak: 'break-word', whiteSpace: 'normal' }}>{task.title}</span>
+                          {expanded && task.dueTime && (
+                            <span style={{ fontWeight: 600, color: 'var(--muted-foreground)', fontSize: '0.95em', marginLeft: expanded && task.title && task.title.length > 18 ? 0 : '0.25rem', marginTop: expanded && task.title && task.title.length > 18 ? '2px' : 0 }}>
+                              {formatTime12(task.dueTime)}
+                            </span>
+                          )}
                         </div>
                       );
                     })}
-                    {dayTasks.length > 2 && (
+                    {!expanded && dayTasks.length > 2 && (
                       <div className="text-xs text-center font-medium" style={{ color: 'var(--muted-foreground)' }}>
                         +{dayTasks.length - 2} more
                       </div>

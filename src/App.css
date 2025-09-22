@@ -1,3 +1,112 @@
+.calendar-container.expanded .calendar-day {
+  /* width/height/padding reset to default */
+}
+.sidebar-area.sidebar-below {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  gap: 2rem;
+  align-items: stretch;
+  justify-content: flex-start;
+}
+.sidebar-area.sidebar-below .sidebar-focus {
+  flex: 0 0 55% !important;
+  width: 55% !important;
+  max-width: 55% !important;
+  background: rgba(255,255,255,0.98);
+}
+.sidebar-area.sidebar-below .sidebar-overview {
+  flex: 0 0 20% !important;
+  width: 20% !important;
+  max-width: 20% !important;
+  background: rgba(240,255,255,0.98);
+}
+.sidebar-area.sidebar-below .sidebar-tip {
+  flex: 0 0 20% !important;
+  width: 20% !important;
+  max-width: 20% !important;
+  background: rgba(230,255,255,0.98);
+}
+/* === Calendar Expand Button Icon + Hover Text === */
+.calendar-expand-btn {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
+}
+.calendar-expand-btn .calendar-expand-text {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s;
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--card);
+  color: var(--card-foreground);
+  padding: 0.25rem 0.75rem;
+  border-radius: 0.5rem;
+  box-shadow: 0 2px 8px 0 oklch(0.13 0.02 240 / 0.10);
+  font-size: 0.85rem;
+  font-weight: 500;
+  z-index: 10;
+  white-space: nowrap;
+}
+.calendar-expand-btn:hover .calendar-expand-text,
+.calendar-expand-btn:focus .calendar-expand-text,
+.calendar-expand-btn.group:hover .calendar-expand-text {
+  opacity: 1;
+}
+/* === Animated Calendar Expansion & Sidebar Movement (Desktop Only) === */
+.main-content-area.calendar-expanded {
+  grid-template-columns: 1fr;
+}
+.calendar-expanded-area {
+  width: 100%;
+  grid-column: 1 / -1;
+  z-index: 2;
+  transition: all 0.5s cubic-bezier(0.4,0,0.2,1);
+}
+.calendar-container.expanded {
+  min-height: 480px;
+  box-shadow: 0 4px 32px 0 oklch(0.13 0.02 240 / 0.18);
+  transform: scale(1.02);
+  transition: all 0.5s cubic-bezier(0.4,0,0.2,1);
+}
+.sidebar-area.sidebar-below {
+  grid-column: 1 / -1;
+  margin-top: 2rem;
+  z-index: 1;
+  transition: all 0.5s cubic-bezier(0.4,0,0.2,1);
+}
+@media (max-width: 1023px) {
+  .calendar-expand-btn {
+    display: none !important;
+  }
+  .main-content-area.calendar-expanded,
+  .calendar-expanded-area,
+  .sidebar-area.sidebar-below,
+  .calendar-container.expanded {
+    all: unset !important;
+    display: block !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100vw !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+    transform: none !important;
+  }
+  .sidebar-area.sidebar-below .sidebar-focus,
+  .sidebar-area.sidebar-below .sidebar-overview,
+  .sidebar-area.sidebar-below .sidebar-tip {
+    width: 100% !important;
+    max-width: 100% !important;
+    flex: 1 1 100% !important;
+    margin-bottom: 1rem !important;
+  }
+}
 /**
  * =============================================================================
  * STYLESHEET: Main Application Styles
