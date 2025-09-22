@@ -113,8 +113,8 @@ function App() {
   const [isDarkMode, setIsDarkMode] = useState(() => {
     const savedTheme = localStorage.getItem("theme");
     if (savedTheme) return savedTheme === "dark";
-    // If no theme is saved, default to the user's system preference.
-    return window.matchMedia("(prefers-color-scheme: dark)").matches;
+    // If no theme is saved, default to light mode.
+    return false;
   });
 
   // ===========================================================================
