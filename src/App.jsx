@@ -54,6 +54,7 @@ import {
   saveTasks,
   exportTasks,
   importTasks,
+  importICS,
 } from "./utils/storage"; // Utility functions for data handling
 import "./App.css";
 import Footer from "./components/Footer";
@@ -502,33 +503,7 @@ function App() {
     });
   };
 
-  /**
-   * Handles the file input change event to import tasks from a JSON file.
-   * @param {Event} event - The file input change event.
-   */
-  const handleImportTasks = (event) => {
-    const file = event.target.files[0];
-    if (file) {
-      importTasks(file)
-        .then((importedTasks) => {
-          setTasks(importedTasks);
-          showNotification({
-            type: "success",
-            message: "Tasks imported successfully",
-            details: `${importedTasks.length} tasks have been loaded`,
-          });
-        })
-        .catch((error) => {
-          showNotification({
-            type: "error",
-            message: "Import failed",
-            details: error.message,
-          });
-        });
-    }
-    // Reset the file input to allow re-importing the same file if needed.
-    event.target.value = "";
-  };
+  // unified import handler is attached directly to the input element
 
   /**
    * Formats a time string (e.g., "14:30") into a 12-hour format (e.g., "2:30 PM").
@@ -660,10 +635,44 @@ function App() {
                 <div className="relative">
                   <input
                     type="file"
-                    accept=".json"
-                    onChange={handleImportTasks}
+                    accept=".json,.ics"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (!file) return
+                      const maxSize = 5 * 1024 * 1024 // 5MB
+                      if (file.size > maxSize) {
+                        showNotification({ type: 'error', message: 'File too large', details: 'Please select a file smaller than 5MB.' })
+                        e.target.value = ''
+                        return
+                      }
+                      const name = file.name.toLowerCase()
+                      if (name.endsWith('.json')) {
+                        importTasks(file)
+                          .then((importedTasks) => {
+                            setTasks(importedTasks)
+                            showNotification({ type: 'success', message: 'Tasks imported successfully', details: `${importedTasks.length} tasks have been loaded from ${file.name}` })
+                          })
+                          .catch((err) => {
+                            showNotification({ type: 'error', message: 'Import failed', details: err.message })
+                          })
+                      } else if (name.endsWith('.ics')) {
+                        importICS(file)
+                          .then((imported) => {
+                            const existingKeys = new Set(tasks.map(t => `${t.title}__${t.dueDate}__${t.dueTime}`))
+                            const toAdd = imported.filter(it => !existingKeys.has(`${it.title}__${it.dueDate}__${it.dueTime}`)).map(it => ({ ...it, id: Date.now() + Math.floor(Math.random()*10000) }))
+                            if (toAdd.length > 0) setTasks(prev => [...prev, ...toAdd])
+                            showNotification({ type: 'success', message: 'Calendar imported', details: `${toAdd.length} events added as tasks from ${file.name}` })
+                          })
+                          .catch((err) => {
+                            showNotification({ type: 'error', message: 'ICS import failed', details: err.message })
+                          })
+                      } else {
+                        showNotification({ type: 'error', message: 'Unsupported file type', details: 'Please select a .json or .ics file.' })
+                      }
+                      e.target.value = ''
+                    }}
                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                    id="import-tasks"
+                    id="import-file"
                   />
                   <Button
                     variant="outline"
@@ -671,7 +680,7 @@ function App() {
                     className="transition-all duration-300 hover:shadow-md active:scale-95 button relative-button"
                     asChild
                   >
-                    <label htmlFor="import-tasks" className="cursor-pointer">
+                    <label htmlFor="import-file" className="cursor-pointer">
                       <Download className="h-4 w-4 mr-2" />
                       Import
                     </label>
