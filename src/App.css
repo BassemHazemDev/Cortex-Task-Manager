@@ -27,6 +27,17 @@
   max-width: 20% !important;
   background: rgba(230,255,255,0.98);
 }
+
+/* Dark mode styles for expanded sidebar */
+.dark .sidebar-area.sidebar-below .sidebar-focus {
+  background: var(--sidebar);
+}
+.dark .sidebar-area.sidebar-below .sidebar-overview {
+  background: var(--sidebar);
+}
+.dark .sidebar-area.sidebar-below .sidebar-tip {
+  background: color-mix(in oklab, var(--accent) 20%, transparent);
+}
 /* === Calendar Expand Button Icon + Hover Text === */
 .calendar-expand-btn {
   position: relative;
