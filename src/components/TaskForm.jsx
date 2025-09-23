@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { X, Save, Calendar, Clock, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button.jsx'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card.jsx'
@@ -8,43 +8,35 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label.jsx'
 
 const TaskForm = ({ task, initialDate, onSave, onCancel }) => {
-  const [formData, setFormData] = useState(() => ({
-    title: '',
-    description: '',
-    dueDate: initialDate || '',
-    dueTime: '',
-    priority: 'medium',
-    estimatedDuration: 60,
-    tags: [],
-  repeatUntil: '', // Optional: date until which the task should repeat
-  repeatFrequency: 'none' // Repeat frequency: none, daily, weekly, monthly, yearly
-  }))
-
-
-  const [errors, setErrors] = useState({})
-
-  useEffect(() => {
-    // If editing an existing task, populate the form with its data.
+  const [formData, setFormData] = useState(() => {
     if (task) {
-      setFormData({
+      return {
         title: task.title || '',
         description: task.description || '',
         dueDate: task.dueDate || '',
         dueTime: task.dueTime || '',
-        priority: task.priority || 'medium',
+        priority: task && task.priority ? task.priority : 'medium',
         estimatedDuration: task.estimatedDuration || 60,
         tags: task.tags || [],
         repeatUntil: task.repeatUntil || '',
         repeatFrequency: task.repeatFrequency || 'none'
-      });
-      return;
+      };
     }
+    return {
+      title: '',
+      description: '',
+      dueDate: initialDate || '',
+      dueTime: '',
+      priority: 'medium',
+      estimatedDuration: 60,
+      tags: [],
+      repeatUntil: '',
+      repeatFrequency: 'none'
+    };
+  });
 
-    // If creating a new task and an initialDate was provided, prefill the dueDate.
-    if (!task && initialDate) {
-      setFormData(prev => ({ ...prev, dueDate: initialDate }));
-    }
-  }, [task, initialDate]);
+
+  const [errors, setErrors] = useState({})
 
   const validateForm = () => {
     const newErrors = {}
@@ -309,7 +301,7 @@ const TaskForm = ({ task, initialDate, onSave, onCancel }) => {
               <Label htmlFor="priority">Priority</Label>
               <Select value={formData.priority} onValueChange={(value) => handleChange('priority', value)}>
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue placeholder="Select priority" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="low">Low</SelectItem>
@@ -324,7 +316,7 @@ const TaskForm = ({ task, initialDate, onSave, onCancel }) => {
               <Label htmlFor="repeatFrequency">Repeat</Label>
               <Select value={formData.repeatFrequency} onValueChange={value => handleChange('repeatFrequency', value)}>
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue placeholder="Select repeat frequency" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">No Repeat</SelectItem>
