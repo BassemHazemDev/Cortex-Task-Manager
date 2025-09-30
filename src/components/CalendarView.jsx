@@ -15,6 +15,9 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
   // Use the date refresh hook to handle midnight transitions
   const { now } = useDateRefresh();
   
+  // View mode state: 'month', 'week', '3day'
+  const [viewMode, setViewMode] = useState('month');
+  
   // Drag-and-drop state for dragging task
   const [draggedTaskId, setDraggedTaskId] = useState(null);
   function playCompleteSound() {
@@ -103,8 +106,42 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
 
   const navigateMonth = (direction) => {
     const newMonth = new Date(currentMonth);
-    newMonth.setMonth(currentMonth.getMonth() + direction);
+    if (viewMode === 'month') {
+      newMonth.setMonth(currentMonth.getMonth() + direction);
+    } else if (viewMode === 'week') {
+      newMonth.setDate(currentMonth.getDate() + (direction * 7));
+    } else if (viewMode === '3day') {
+      newMonth.setDate(currentMonth.getDate() + (direction * 3));
+    }
     setCurrentMonth(newMonth);
+  };
+
+  // Get days for weekly view (7 days starting from Monday of the week containing currentMonth)
+  const getWeekDays = (date) => {
+    const startOfWeek = new Date(date);
+    const dayOfWeek = startOfWeek.getDay();
+    // Adjust to Monday: Sunday=0, Monday=1, Tuesday=2, etc.
+    const daysToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+    startOfWeek.setDate(startOfWeek.getDate() + daysToMonday);
+    
+    const days = [];
+    for (let i = 0; i < 7; i++) {
+      const day = new Date(startOfWeek);
+      day.setDate(startOfWeek.getDate() + i);
+      days.push(day);
+    }
+    return days;
+  };
+
+  // Get days for 3-day view (current date and next 2 days)
+  const get3Days = (date) => {
+    const days = [];
+    for (let i = 0; i < 3; i++) {
+      const day = new Date(date);
+      day.setDate(date.getDate() + i);
+      days.push(day);
+    }
+    return days;
   };
 
   const isToday = (date) => {
@@ -138,18 +175,57 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
     return time;
   }
 
-  const days = getDaysInMonth(currentMonth);
-  const dayNames = ['Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+  // Get appropriate days based on view mode
+  const getDaysForView = () => {
+    if (viewMode === 'month') {
+      return getDaysInMonth(currentMonth);
+    } else if (viewMode === 'week') {
+      return getWeekDays(currentMonth);
+    } else if (viewMode === '3day') {
+      return get3Days(currentMonth);
+    }
+    return [];
+  };
+
+  const days = getDaysForView();
+  const dayNames = viewMode === 'month' 
+    ? ['Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri']
+    : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
   const selectedDayTasks = getTasksForDate(selectedDate);
+
+  // Get header title based on view mode
+  const getHeaderTitle = () => {
+    if (viewMode === 'month') {
+      return currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    } else if (viewMode === 'week') {
+      const weekDays = getWeekDays(currentMonth);
+      const startDate = weekDays[0];
+      const endDate = weekDays[6];
+      if (startDate.getMonth() === endDate.getMonth()) {
+        return `${startDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })} - Week of ${startDate.getDate()}`;
+      } else {
+        return `${startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+      }
+    } else if (viewMode === '3day') {
+      const threeDays = get3Days(currentMonth);
+      const startDate = threeDays[0];
+      const endDate = threeDays[2];
+      if (startDate.getMonth() === endDate.getMonth()) {
+        return `${startDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })} - ${startDate.getDate()}-${endDate.getDate()}`;
+      } else {
+        return `${startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+      }
+    }
+  };
 
   return (
     <div className="space-y-6 p-4" style={{ background: 'var(--card)', color: 'var(--card-foreground)', minHeight: '100vh' }}>
-  {/* Main calendar grid displaying the current month and navigation controls */}
+  {/* Main calendar grid displaying the current view and navigation controls */}
       <Card style={{ background: 'var(--background)', color: 'var(--foreground)' }} className="rounded-xl shadow-md">
         <CardHeader className="p-4 border-b">
           <div className="flex items-center justify-between">
             <CardTitle className="text-xl font-bold" style={{ color: 'var(--foreground)' }}>
-              {currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+              {getHeaderTitle()}
             </CardTitle>
             <div className="flex space-x-2">
               <Button
@@ -168,20 +244,54 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
               </Button>
             </div>
           </div>
+          {/* View mode selector */}
+          <div className="flex space-x-2 mt-4 justify-center">
+            <Button
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${viewMode === 'month' ? 'shadow-md' : ''}`}
+              style={{ 
+                background: viewMode === 'month' ? 'var(--primary)' : 'var(--muted)', 
+                color: viewMode === 'month' ? 'var(--primary-foreground)' : 'var(--muted-foreground)' 
+              }}
+              onClick={() => setViewMode('month')}
+            >
+              Month
+            </Button>
+            <Button
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${viewMode === 'week' ? 'shadow-md' : ''}`}
+              style={{ 
+                background: viewMode === 'week' ? 'var(--primary)' : 'var(--muted)', 
+                color: viewMode === 'week' ? 'var(--primary-foreground)' : 'var(--muted-foreground)' 
+              }}
+              onClick={() => setViewMode('week')}
+            >
+              Week
+            </Button>
+            <Button
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${viewMode === '3day' ? 'shadow-md' : ''}`}
+              style={{ 
+                background: viewMode === '3day' ? 'var(--primary)' : 'var(--muted)', 
+                color: viewMode === '3day' ? 'var(--primary-foreground)' : 'var(--muted-foreground)' 
+              }}
+              onClick={() => setViewMode('3day')}
+            >
+              3 Days
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="p-4">
-          {/* Header row displaying day names (Sat-Fri) */}
-          <div className="grid grid-cols-7 gap-1 mb-2">
-            {dayNames.map(day => (
-              <div key={day} className="p-2 text-center text-sm font-medium" style={{ color: 'var(--muted-foreground)' }}>
-                {day}
+          {/* Header row displaying day names */}
+          <div className={`grid gap-1 mb-2 ${viewMode === 'month' ? 'grid-cols-7' : viewMode === 'week' ? 'grid-cols-7' : 'grid-cols-3'}`}>
+            {(viewMode === 'month' || viewMode === 'week' ? dayNames : days.map(d => d.toLocaleDateString('en-US', { weekday: 'short' }))).map((day, index) => (
+              <div key={`${day}-${index}`} className="p-2 text-center text-sm font-medium" style={{ color: 'var(--muted-foreground)' }}>
+                {viewMode === '3day' ? `${day} ${days[index].getDate()}` : day}
               </div>
             ))}
           </div>
           {/* Calendar days grid: each cell represents a day and displays tasks */}
-          <div className="grid grid-cols-7 gap-1">
+          <div className={`grid gap-1 ${viewMode === 'month' ? 'grid-cols-7' : viewMode === 'week' ? 'grid-cols-7' : 'grid-cols-3'}`}>
             {days.map((date, index) => {
-              if (!date) return <div key={index} />;
+              if (!date && viewMode === 'month') return <div key={index} />;
+              if (!date) return null;
 
               let dayTasks = getTasksForDate(date);
               // Sort tasks by dueTime if present
@@ -206,10 +316,22 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
                 dayBorder = isDark ? 'var(--accent)' : '#38bdf8';
                 dayText = isDark ? 'var(--accent-foreground)' : '#0c4a6e';
               }
+              // Adjust cell height based on view mode
+              const getCellHeight = () => {
+                if (viewMode === 'month') {
+                  return expanded ? 'min-h-[180px]' : 'min-h-[140px]';
+                } else if (viewMode === 'week') {
+                  return expanded ? 'min-h-[250px]' : 'min-h-[200px]';
+                } else if (viewMode === '3day') {
+                  return expanded ? 'min-h-[300px]' : 'min-h-[250px]';
+                }
+                return 'min-h-[140px]';
+              };
+
               return (
                 <div
-                  key={index}
-                  className={`border rounded-lg cursor-pointer transition-all duration-200 hover:shadow-lg hover:-translate-y-1 calendar-card ${expanded ? 'min-h-[180px] p-4' : 'min-h-[140px] p-2'}`}
+                  key={`${date.toISOString()}-${index}`}
+                  className={`border rounded-lg cursor-pointer transition-all duration-200 hover:shadow-lg hover:-translate-y-1 calendar-card ${getCellHeight()} p-4`}
                   style={{ background: dayBg, borderColor: dayBorder, color: dayText }}
                   onClick={() => onDateSelect(date)}
                   onDoubleClick={(e) => {
@@ -248,7 +370,14 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
                     {date.getDate()}
                   </div>
                   <div className="space-y-1 calendar-card-content">
-                    {(expanded ? dayTasks : dayTasks.slice(0, 2)).map(task => {
+                    {(() => {
+                      const maxTasks = viewMode === 'month' 
+                        ? (expanded ? dayTasks.length : 2)
+                        : viewMode === 'week'
+                        ? (expanded ? dayTasks.length : 4)
+                        : dayTasks.length; // 3day shows all tasks
+                      return expanded ? dayTasks : dayTasks.slice(0, maxTasks);
+                    })().map(task => {
                       // Renders each task in the day cell with appropriate color and click handler
                       let bg = task.priority === 'medium'
                         ? 'var(--accent)'
@@ -286,11 +415,18 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
                         </div>
                       );
                     })}
-                    {!expanded && dayTasks.length > 2 && (
-                      <div className="text-xs text-center font-medium" style={{ color: 'var(--muted-foreground)' }}>
-                        +{dayTasks.length - 2} more
-                      </div>
-                    )}
+                    {(() => {
+                      const maxTasks = viewMode === 'month' ? 2 : viewMode === 'week' ? 4 : dayTasks.length;
+                      const showMore = !expanded && dayTasks.length > maxTasks && viewMode !== '3day';
+                      if (showMore) {
+                        return (
+                          <div className="text-xs text-center font-medium" style={{ color: 'var(--muted-foreground)' }}>
+                            +{dayTasks.length - maxTasks} more
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
                   </div>
                 </div>
               );
