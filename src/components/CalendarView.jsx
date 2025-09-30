@@ -497,7 +497,7 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
                   return (
                     <div
                       key={task.id}
-                      className="flex items-center justify-between p-3 rounded-lg shadow-md cursor-pointer transition-all duration-200 hover:scale-[1.03] hover:shadow-lg hover:bg-[var(--accent)] hover:text-[var(--accent-foreground)] task-container"
+                      className="flex items-center justify-between p-3 rounded-lg shadow-md cursor-pointer transition-all duration-200 hover:scale-[1.03] hover:shadow-lg hover:bg-[var(--accent)] hover:text-[var(--accent-foreground)] task-container overflow-hidden"
                       style={{ background: bg, color, opacity }}
                       onClick={() => onTaskClick(task)}
                     >
