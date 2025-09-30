@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useDateRefresh } from '../hooks/useDateRefresh';
 import { Clock, Lightbulb, RefreshCw, Calendar } from 'lucide-react'
 import { Button } from '@/components/ui/button.jsx'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card.jsx'
@@ -6,6 +7,9 @@ import { Badge } from '@/components/ui/badge.jsx'
 import { TaskScheduler, SchedulingSuggestions, ConflictWarning } from './Scheduler'
 
 const SmartScheduler = ({ tasks, onUpdateTask, onShowNotification, availableHours }) => {
+  // Use the date refresh hook to handle midnight transitions
+  const { now } = useDateRefresh();
+  
   const [scheduler] = useState(() => new TaskScheduler(tasks, availableHours))
   const [pendingSuggestions, setPendingSuggestions] = useState([])
   const [autoRescheduling] = useState(false)
@@ -22,7 +26,6 @@ const SmartScheduler = ({ tasks, onUpdateTask, onShowNotification, availableHour
   // Check for tasks that need rescheduling
   useEffect(() => {
     const checkForRescheduling = () => {
-      const now = new Date()
       const suggestions = []
 
       tasks.forEach(task => {
@@ -66,7 +69,7 @@ const SmartScheduler = ({ tasks, onUpdateTask, onShowNotification, availableHour
     const interval = setInterval(checkForRescheduling, 5 * 60 * 1000) // Check every 5 minutes
 
     return () => clearInterval(interval)
-  }, [tasks, scheduler])
+  }, [tasks, scheduler, now])
 
   // Show slot suggestions for rescheduling overdue task
   const handleShowRescheduleSuggestions = (taskId) => {
@@ -178,7 +181,6 @@ const SmartScheduler = ({ tasks, onUpdateTask, onShowNotification, availableHour
   }
 
   const getOverdueTasks = () => {
-    const now = new Date();
     return tasks.filter(task => {
       if (task.isCompleted || !task.dueDate) return false;
       if (!task.dueTime) {
@@ -199,7 +201,6 @@ const SmartScheduler = ({ tasks, onUpdateTask, onShowNotification, availableHour
   }
 
   const getUpcomingTasks = () => {
-    const now = new Date()
     const tomorrow = new Date(now)
     tomorrow.setDate(tomorrow.getDate() + 1)
     
@@ -274,7 +275,7 @@ const SmartScheduler = ({ tasks, onUpdateTask, onShowNotification, availableHour
           </CardHeader>
           <CardContent>
             <div className="mb-4">
-              <h4 className="font-medium text-blue-900 dark:text-blue-100">{suggestion.task.title}</h4>
+              <h4 className="font-medium text-blue-900 dark:text-blue-100 truncate" title={suggestion.task.title}>{suggestion.task.title}</h4>
               <p className="text-sm text-blue-700 dark:text-blue-200">{suggestion.reason}</p>
             </div>
 
@@ -350,7 +351,7 @@ const SmartScheduler = ({ tasks, onUpdateTask, onShowNotification, availableHour
                       </CardHeader>
                       <CardContent>
                         <div className="mb-2">
-                          <h4 className="font-medium text-blue-900 dark:text-blue-100">{task.title}</h4>
+                          <h4 className="font-medium text-blue-900 dark:text-blue-100 truncate" title={task.title}>{task.title}</h4>
                           <p className="text-sm text-blue-700 dark:text-blue-200">Choose a new time slot for this task:</p>
                         </div>
                         <div className="space-y-2 mb-4">
@@ -390,7 +391,7 @@ const SmartScheduler = ({ tasks, onUpdateTask, onShowNotification, availableHour
                   ) : (
                     <div className="flex items-center justify-between p-2 bg-white dark:bg-gray-800 rounded border">
                       <div>
-                        <p className="font-medium dark:text-red-100">{task.title}</p>
+                        <p className="font-medium dark:text-red-100 truncate" title={task.title}>{task.title}</p>
                         <p className="text-sm text-gray-600 dark:text-gray-300">
                           Due: {(() => {
                             const dateObj = new Date(task.dueDate + (task.dueTime ? `T${task.dueTime}` : ''));

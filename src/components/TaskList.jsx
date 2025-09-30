@@ -1,5 +1,6 @@
 import { formatDateTimeContext } from "@/lib/utils.js";
 import { useState } from "react";
+import { useDateRefresh } from "../hooks/useDateRefresh";
 import { CheckCircle, Clock, Calendar, Trash2, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button.jsx";
 import {
@@ -53,6 +54,9 @@ function TagFilter({ tasks, tagFilter, setTagFilter }) {
 }
 
 const TaskList = ({ tasks, onTaskClick, onToggleComplete, onDeleteTask }) => {
+  // Use the date refresh hook to handle midnight transitions
+  const { getToday, getTomorrow, getDayAfterTomorrow, now } = useDateRefresh();
+  
   function playCompleteSound() {
     const audio = new window.Audio("/complete.mp3");
     audio.play();
@@ -62,7 +66,7 @@ const TaskList = ({ tasks, onTaskClick, onToggleComplete, onDeleteTask }) => {
   function formatTime12(timeStr, dateStr) {
     if (!timeStr) return "";
     return formatDateTimeContext(
-      dateStr || new Date().toISOString().split("T")[0],
+      dateStr || getToday(),
       timeStr
     );
   }
@@ -107,16 +111,13 @@ const TaskList = ({ tasks, onTaskClick, onToggleComplete, onDeleteTask }) => {
 
     // Day filter
     if (dayFilter !== "all") {
-      const now = new Date();
-      const todayStr = now.toISOString().split("T")[0];
-      const tomorrow = new Date(now);
-      tomorrow.setDate(now.getDate() + 1);
-      const tomorrowStr = tomorrow.toISOString().split("T")[0];
-      const dayAfterTomorrow = new Date(now);
-      dayAfterTomorrow.setDate(now.getDate() + 2);
-      const dayAfterTomorrowStr = dayAfterTomorrow.toISOString().split("T")[0];
+      const todayStr = getToday();
+      const tomorrowStr = getTomorrow();
+      const dayAfterTomorrowStr = getDayAfterTomorrow();
       const weekStart = new Date(now);
-      weekStart.setDate(now.getDate() - now.getDay());
+      // Adjust for Saturday-first week: Saturday=0, Sunday=1, etc.
+      const daysSinceSaturday = (now.getDay() + 1) % 7;
+      weekStart.setDate(now.getDate() - daysSinceSaturday);
       weekStart.setHours(0, 0, 0, 0);
       const weekEnd = new Date(weekStart);
       weekEnd.setDate(weekStart.getDate() + 6);
@@ -410,13 +411,14 @@ const TaskList = ({ tasks, onTaskClick, onToggleComplete, onDeleteTask }) => {
                         >
                           {task.title}
                         </h3>
-                        <div className="card-content-tags">
+                        <div className="flex flex-wrap gap-1 mt-1">
                           {Array.isArray(task.tags) &&
                             task.tags.map((tag) => (
                               <Badge
                                 key={tag}
                                 variant="outline"
-                                className="ml-1 text-xs"
+                                className="text-xs truncate max-w-[120px]"
+                                title={tag.length > 15 ? tag : undefined}
                               >
                                 {tag}
                               </Badge>
@@ -430,21 +432,29 @@ const TaskList = ({ tasks, onTaskClick, onToggleComplete, onDeleteTask }) => {
                                 ? "default"
                                 : "secondary"
                             }
+                            className="text-xs"
                           >
                             {task.priority}
                           </Badge>
                           {isOverdue(task) && (
-                            <Badge variant="destructive">Overdue</Badge>
+                            <Badge variant="destructive" className="text-xs">Overdue</Badge>
                           )}
                         </div>
                       </div>
 
                       {task.description && (
                         <p
-                          className={`text-sm mb-2 ${
+                          className={`text-sm mb-2 break-words overflow-hidden ${
                             task.isCompleted ? "line-through" : ""
                           }`}
-                          style={{ color: "var(--muted-foreground)" }}
+                          style={{ 
+                            color: "var(--muted-foreground)",
+                            display: "-webkit-box",
+                            WebkitLineClamp: 3,
+                            WebkitBoxOrient: "vertical",
+                            maxHeight: "4.5rem"
+                          }}
+                          title={task.description}
                         >
                           {task.description}
                         </p>

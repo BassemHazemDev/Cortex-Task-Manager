@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useDateRefresh } from '../hooks/useDateRefresh';
 import { ChevronLeft, ChevronRight, CheckCircle, Clock } from 'lucide-react';
 
 // UI component mocks for demonstration; replace with your actual UI library imports in production.
@@ -11,6 +12,9 @@ const Badge = ({ children, variant, ...props }) => <span data-variant={variant} 
 
 
 const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggleComplete, expanded, onTaskDrop, onCreateDate }) => {
+  // Use the date refresh hook to handle midnight transitions
+  const { now } = useDateRefresh();
+  
   // Drag-and-drop state for dragging task
   const [draggedTaskId, setDraggedTaskId] = useState(null);
   function playCompleteSound() {
@@ -20,7 +24,6 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
   // Helper to check if a task is overdue (after its duration ends)
   function isOverdue(task) {
     if (!task.dueDate || task.isCompleted) return false;
-    const now = new Date();
     if (!task.dueTime) {
       // No dueTime: overdue if the day is over
       const dayEnd = new Date(task.dueDate + 'T23:59:59');
@@ -61,7 +64,8 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
     const daysInMonth = lastDay.getDate();
-    const startingDayOfWeek = firstDay.getDay();
+    // Adjust for Saturday-first week: Saturday=0, Sunday=1, Monday=2, etc.
+    const startingDayOfWeek = (firstDay.getDay() + 1) % 7;
 
     const days = [];
     
@@ -105,8 +109,7 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
 
   const isToday = (date) => {
     if (!date) return false;
-    const today = new Date();
-    return date.toDateString() === today.toDateString();
+    return date.toDateString() === now.toDateString();
   };
 
   const isSelected = (date) => {
@@ -136,7 +139,7 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
   }
 
   const days = getDaysInMonth(currentMonth);
-  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const dayNames = ['Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
   const selectedDayTasks = getTasksForDate(selectedDate);
 
   return (
@@ -167,7 +170,7 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
           </div>
         </CardHeader>
         <CardContent className="p-4">
-          {/* Header row displaying day names (Sun-Sat) */}
+          {/* Header row displaying day names (Sat-Fri) */}
           <div className="grid grid-cols-7 gap-1 mb-2">
             {dayNames.map(day => (
               <div key={day} className="p-2 text-center text-sm font-medium" style={{ color: 'var(--muted-foreground)' }}>
@@ -375,11 +378,23 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
                           {task.isCompleted && <CheckCircle className="h-3 w-3" style={{ color: 'var(--success-foreground, #fff)' }} />}
                         </button>
                         <div>
-                          <h4 className="font-medium" style={{ color: task.isCompleted ? 'var(--muted-foreground)' : color, textDecoration: task.isCompleted ? 'line-through' : 'none' }}>
+                          <h4 className="font-medium truncate" style={{ color: task.isCompleted ? 'var(--muted-foreground)' : color, textDecoration: task.isCompleted ? 'line-through' : 'none' }} title={task.title}>
                             {task.title}
                           </h4>
                           {task.description && (
-                            <p className="text-sm mt-1" style={{ color: 'var(--muted-foreground)' }}>{task.description}</p>
+                            <p 
+                              className="text-sm mt-1 break-words overflow-hidden" 
+                              style={{ 
+                                color: 'var(--muted-foreground)',
+                                display: "-webkit-box",
+                                WebkitLineClamp: 2,
+                                WebkitBoxOrient: "vertical",
+                                maxHeight: "3rem"
+                              }}
+                              title={task.description}
+                            >
+                              {task.description}
+                            </p>
                           )}
                           {Array.isArray(task.tags) && task.tags.length > 0 && (
                             <div className="flex flex-wrap gap-1 mt-1">

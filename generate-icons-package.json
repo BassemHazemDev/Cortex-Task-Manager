@@ -1,0 +1,9 @@
+{
+  "name": "icon-generator",
+  "version": "1.0.0",
+  "description": "Generate PWA icons from source image",
+  "type": "module",
+  "dependencies": {
+    "sharp": "^0.32.6"
+  }
+}

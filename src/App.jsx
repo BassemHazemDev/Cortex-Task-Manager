@@ -24,6 +24,7 @@
 
 import { useState, useEffect } from "react";
 import dailyTips from "./lib/dailyTips";
+import { useDateRefresh } from "./hooks/useDateRefresh";
 import {
   Calendar,
   Plus,
@@ -60,6 +61,9 @@ import "./App.css";
 import Footer from "./components/Footer";
 
 function App() {
+  // Use the date refresh hook to handle midnight transitions
+  const { getToday, now } = useDateRefresh();
+  
   function playCompleteSound() {
     const audio = new window.Audio("/complete.mp3");
     audio.play();
@@ -87,7 +91,7 @@ function App() {
   }, [availableHours]);
   // Daily tip logic: Save tip index in localStorage so it changes only once per day
   function getDailyTip() {
-    const today = new Date().toISOString().split("T")[0];
+    const today = getToday(); // Use the date refresh hook for consistent date
     const tipData = JSON.parse(localStorage.getItem("dailyTipIndex")) || {};
     if (tipData.date === today && typeof tipData.index === "number") {
       return dailyTips[tipData.index];
@@ -465,7 +469,6 @@ function App() {
 
   /** Returns tasks that are past their due date and not yet completed. */
   const getOverdueTasks = () => {
-    const now = new Date();
     return tasks.filter((task) => {
       if (task.isCompleted || !task.dueDate) return false;
       if (!task.dueTime) {
