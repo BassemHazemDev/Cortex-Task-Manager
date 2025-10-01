@@ -453,7 +453,11 @@ function App() {
    * @returns {Array} An array of tasks for the given date.
    */
   const getTasksForDate = (date) => {
-    const dateStr = date.toISOString().split("T")[0];
+    // Use local date to avoid timezone issues - same format as useDateRefresh hook
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
     return tasks.filter((task) => task.dueDate === dateStr);
   };
 
@@ -864,7 +868,7 @@ function App() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {getTasksForDate(new Date()).length === 0 ? (
+                {getTasksForDate(now).length === 0 ? (
                   <div className="text-center py-4">
                     <CheckCircle className="h-8 w-8 mx-auto mb-2 text-muted-foreground/50" />
                     <p className="text-muted-foreground text-sm">
@@ -876,7 +880,7 @@ function App() {
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {getTasksForDate(new Date()).map((task) => (
+                    {getTasksForDate(now).map((task) => (
                       <div
                         key={task.id}
                         className="bg-card/80 backdrop-blur-sm border border-border/50 rounded-lg shadow-sm p-3 cursor-pointer transition-all duration-300 hover:scale-[1.02] hover:shadow-lg hover:bg-accent/30"
