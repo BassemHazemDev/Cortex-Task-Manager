@@ -128,37 +128,69 @@ export const exportTasks = (tasks) => {
 }
 
 /**
- * Imports tasks from a user-selected JSON file.
- * This function reads the file content, parses it, and validates that the structure
- * is an array. It returns a Promise that either resolves with the parsed array of
- * tasks or rejects if an error occurs during reading, parsing, or validation.
- * @param {File} file - The JSON file object, typically from a file input element.
- * @returns {Promise<Array<Object>>} A Promise that resolves with the imported array of tasks.
+ * Exports both tasks and TODOs to a downloadable JSON file.
+ * The file will contain an object with { tasks, todos }.
+ * @param {Array<Object>} tasks - The array of task objects to export.
+ * @param {Array<Object>} todos - The array of TODO objects to export.
  */
-export const importTasks = (file) => {
+export const exportAllData = (tasks, todos) => {
+  try {
+    const data = {
+      tasks,
+      todos,
+    };
+    const dataStr = JSON.stringify(data, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `cortex-backup-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error('Error exporting all data:', error);
+  }
+};
+
+/**
+ * Imports tasks and TODOs from a user-selected JSON file.
+ * Supports both legacy (array of tasks) and new (object with tasks and todos) formats.
+ * Returns a Promise that resolves with { tasks, todos }.
+ * @param {File} file - The JSON file object, typically from a file input element.
+ * @returns {Promise<{tasks: Array<Object>, todos: Array<Object>}>}
+ */
+export const importAllData = (file) => {
   return new Promise((resolve, reject) => {
     try {
-      const reader = new FileReader()
+      const reader = new FileReader();
       reader.onload = (e) => {
         try {
-          const tasks = JSON.parse(e.target.result)
-          if (Array.isArray(tasks)) {
-            resolve(tasks)
+          const data = JSON.parse(e.target.result);
+          if (Array.isArray(data)) {
+            // Legacy format: just tasks
+            resolve({ tasks: data, todos: [] });
+          } else if (typeof data === 'object' && data !== null) {
+            // New format: { tasks, todos }
+            const tasks = Array.isArray(data.tasks) ? data.tasks : [];
+            const todos = Array.isArray(data.todos) ? data.todos : [];
+            resolve({ tasks, todos });
           } else {
-            reject(new Error('Invalid file format: The JSON file must contain an array of tasks.'))
+            reject(new Error('Invalid file format: The JSON file must contain an array or an object with tasks and todos.'));
           }
         } catch (parseError) {
-          console.error('Error parsing JSON file:', parseError)
-          reject(new Error('The selected file is not a valid JSON file.'))
+          console.error('Error parsing JSON file:', parseError);
+          reject(new Error('The selected file is not a valid JSON file.'));
         }
-      }
-      reader.onerror = () => reject(new Error('An error occurred while reading the file.'))
-      reader.readAsText(file)
+      };
+      reader.onerror = () => reject(new Error('An error occurred while reading the file.'));
+      reader.readAsText(file);
     } catch (error) {
-      reject(error)
+      reject(error);
     }
-  })
-}
+  });
+};
 
 /**
  * Imports events from an iCalendar (.ics) file and converts them into task objects.

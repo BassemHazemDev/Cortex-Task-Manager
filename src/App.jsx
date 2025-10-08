@@ -55,8 +55,8 @@ import SimpleTodoForm from "./components/SimpleTodoForm";
 import {
   loadTasks,
   saveTasks,
-  exportTasks,
-  importTasks,
+  exportAllData,
+  importAllData,
   importICS,
   loadTodos,
   saveTodos,
@@ -594,13 +594,13 @@ function App() {
   // DATA IMPORT/EXPORT HANDLERS
   // ===========================================================================
 
-  /** Initiates the download of all tasks as a JSON file. */
+  /** Initiates the download of all tasks and TODOs as a JSON file. */
   const handleExportTasks = () => {
-    exportTasks(tasks);
+    exportAllData(tasks, todos);
     showNotification({
       type: "success",
-      message: "Tasks exported successfully",
-      details: "Your tasks have been downloaded as a JSON file",
+      message: "Tasks & TODOs exported successfully",
+      details: "Your data has been downloaded as a JSON file",
     });
   };
 
@@ -742,10 +742,11 @@ function App() {
                       }
                       const name = file.name.toLowerCase()
                       if (name.endsWith('.json')) {
-                        importTasks(file)
-                          .then((importedTasks) => {
+                        importAllData(file)
+                          .then(({ tasks: importedTasks, todos: importedTodos }) => {
                             setTasks(importedTasks)
-                            showNotification({ type: 'success', message: 'Tasks imported successfully', details: `${importedTasks.length} tasks have been loaded from ${file.name}` })
+                            setTodos(importedTodos)
+                            showNotification({ type: 'success', message: 'Data imported successfully', details: `${importedTasks.length} tasks and ${importedTodos.length} TODOs loaded from ${file.name}` })
                           })
                           .catch((err) => {
                             showNotification({ type: 'error', message: 'Import failed', details: err.message })
