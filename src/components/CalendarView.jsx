@@ -371,9 +371,12 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
                   </div>
                   <div className="space-y-1 calendar-card-content">
                     {(() => {
-                      const maxTasks = viewMode === 'month' 
-                        ? (expanded ? dayTasks.length : 2)
-                        : viewMode === 'week'
+                      // In month view, always show all tasks
+                      if (viewMode === 'month') {
+                        return dayTasks;
+                      }
+                      // In week/3day view, keep previous logic
+                      const maxTasks = viewMode === 'week'
                         ? (expanded ? dayTasks.length : 4)
                         : dayTasks.length; // 3day shows all tasks
                       return expanded ? dayTasks : dayTasks.slice(0, maxTasks);
@@ -415,8 +418,10 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
                         </div>
                       );
                     })}
+                    {/* In month view, always show all tasks, so no '+N more' indicator */}
                     {(() => {
-                      const maxTasks = viewMode === 'month' ? 2 : viewMode === 'week' ? 4 : dayTasks.length;
+                      if (viewMode === 'month') return null;
+                      const maxTasks = viewMode === 'week' ? 4 : dayTasks.length;
                       const showMore = !expanded && dayTasks.length > maxTasks && viewMode !== '3day';
                       if (showMore) {
                         return (
