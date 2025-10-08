@@ -413,3 +413,39 @@ export const importICS = (file) => {
     }
   })
 }
+
+// ===========================================================================
+// TODO STORAGE (Simple todos, separate from calendar tasks)
+// ===========================================================================
+
+const TODOS_STORAGE_KEY = 'cortex-task-manager-todos'
+
+/**
+ * Loads simple TODO items from localStorage
+ * @returns {Array} Array of TODO objects
+ */
+export function loadTodos() {
+  try {
+    const stored = localStorage.getItem(TODOS_STORAGE_KEY)
+    if (stored) {
+      return JSON.parse(stored)
+    }
+    return []
+  } catch (error) {
+    console.error('Failed to load TODOs from storage:', error)
+    return []
+  }
+}
+
+/**
+ * Saves simple TODO items to localStorage
+ * @param {Array} todos - Array of TODO objects to save
+ */
+export function saveTodos(todos) {
+  try {
+    localStorage.setItem(TODOS_STORAGE_KEY, JSON.stringify(todos))
+  } catch (error) {
+    console.error('Failed to save TODOs to storage:', error)
+    throw new Error('Unable to save TODOs. Your browser storage might be full.')
+  }
+}

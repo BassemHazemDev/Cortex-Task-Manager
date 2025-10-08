@@ -36,6 +36,7 @@ import {
   Upload,
   Expand,
   ChevronsDownUp,
+  Trash2,
 } from "lucide-react"; // Icon library for a clean UI
 import { Button } from "@/components/ui/button.jsx";
 import {
@@ -50,12 +51,15 @@ import TaskList from "./components/TaskList";
 import TaskForm from "./components/TaskForm";
 import SmartScheduler from "./components/SmartScheduler";
 import NotificationSystem from "./components/NotificationSystem";
+import SimpleTodoForm from "./components/SimpleTodoForm";
 import {
   loadTasks,
   saveTasks,
   exportTasks,
   importTasks,
   importICS,
+  loadTodos,
+  saveTodos,
 } from "./utils/storage"; // Utility functions for data handling
 import "./App.css";
 import Footer from "./components/Footer";
@@ -113,10 +117,13 @@ function App() {
   // STATE MANAGEMENT
   // ===========================================================================
   const [tasks, setTasks] = useState([]); // Holds the master list of all tasks.
+  const [todos, setTodos] = useState([]); // Holds simple TODO items (separate from calendar tasks)
   const [currentView, setCurrentView] = useState("calendar"); // Manages the active view ('calendar', 'tasks', 'scheduler').
   const [selectedDate, setSelectedDate] = useState(new Date()); // Tracks the currently selected date in the calendar.
   const [showTaskForm, setShowTaskForm] = useState(false); // Controls the visibility of the add/edit task modal.
+  const [showTodoForm, setShowTodoForm] = useState(false); // Controls the visibility of the add/edit TODO modal.
   const [editingTask, setEditingTask] = useState(null); // Holds the task object being edited, or null for a new task.
+  const [editingTodo, setEditingTodo] = useState(null); // Holds the TODO object being edited, or null for a new TODO.
   const [notifications, setNotifications] = useState([]); // Stores active user notifications.
   // Settings modal state
   const [showSettingsModal, setShowSettingsModal] = useState(false);
@@ -152,6 +159,8 @@ function App() {
   useEffect(() => {
     const savedTasks = loadTasks();
     setTasks(savedTasks);
+    const savedTodos = loadTodos();
+    setTodos(savedTodos);
   }, []);
 
   // Saves tasks to storage whenever the `tasks` array changes.
@@ -161,6 +170,11 @@ function App() {
       saveTasks(tasks);
     }
   }, [tasks]);
+
+  // Saves TODOs to storage whenever the `todos` array changes.
+  useEffect(() => {
+    saveTodos(todos);
+  }, [todos]);
 
   // ===========================================================================
   // CORE CRUD & TASK OPERATIONS
@@ -447,19 +461,7 @@ function App() {
   // DATA SELECTORS & HELPERS
   // ===========================================================================
 
-  /**
-   * Filters and returns tasks for a specific date.
-   * @param {Date} date - The date to filter tasks by.
-   * @returns {Array} An array of tasks for the given date.
-   */
-  const getTasksForDate = (date) => {
-    // Use local date to avoid timezone issues - same format as useDateRefresh hook
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const dateStr = `${year}-${month}-${day}`;
-    return tasks.filter((task) => task.dueDate === dateStr);
-  };
+  
 
   /** Returns all tasks that are not completed. */
   const getPendingTasks = () => {
@@ -497,6 +499,98 @@ function App() {
   };
 
   // ===========================================================================
+  // TODO HANDLERS (Simple TODOs separate from calendar tasks)
+  // ===========================================================================
+
+  /**
+   * Opens the TODO form for adding or editing a TODO.
+   * @param {object} todo - The TODO to edit (null for new TODO).
+   */
+  const openTodoForm = (todo = null) => {
+    setEditingTodo(todo);
+    setShowTodoForm(true);
+  };
+
+  /**
+   * Closes the TODO form.
+   */
+  const closeTodoForm = () => {
+    setShowTodoForm(false);
+    setEditingTodo(null);
+  };
+
+  /**
+   * Adds a new TODO.
+   * @param {object} todoData - The data for the new TODO.
+   */
+  const addTodo = (todoData) => {
+    const newTodo = {
+      id: Date.now(),
+      ...todoData,
+      isCompleted: false,
+    };
+    setTodos((prev) => [...prev, newTodo]);
+    closeTodoForm();
+    showNotification({
+      type: "success",
+      message: "TODO added successfully",
+      details: `"${todoData.title}" has been added to your TODO list`,
+    });
+  };
+
+  /**
+   * Updates an existing TODO.
+   * @param {number} id - The ID of the TODO to update.
+   * @param {object} updates - The updated TODO data.
+   */
+  const updateTodo = (id, updates) => {
+    setTodos((prev) =>
+      prev.map((todo) => (todo.id === id ? { ...todo, ...updates } : todo))
+    );
+    closeTodoForm();
+    showNotification({
+      type: "success",
+      message: "TODO updated successfully",
+      details: `Your TODO has been updated`,
+    });
+  };
+
+  /**
+   * Deletes a TODO by ID.
+   * @param {number} id - The ID of the TODO to delete.
+   */
+  const deleteTodo = (id) => {
+    const todo = todos.find((t) => t.id === id);
+    setTodos((prev) => prev.filter((t) => t.id !== id));
+    showNotification({
+      type: "success",
+      message: "TODO deleted",
+      details: todo ? `"${todo.title}" has been removed` : "TODO has been removed",
+    });
+  };
+
+  /**
+   * Toggles the completion status of a TODO.
+   * @param {number} id - The ID of the TODO to toggle.
+   */
+  const toggleTodoComplete = (id) => {
+    setTodos((prev) =>
+      prev.map((todo) =>
+        todo.id === id ? { ...todo, isCompleted: !todo.isCompleted } : todo
+      )
+    );
+    const todo = todos.find((t) => t.id === id);
+    if (todo && !todo.isCompleted) {
+      playCompleteSound();
+      showNotification({
+        type: "success",
+        message: "TODO completed! 🎉",
+        details: `Great job completing "${todo.title}"!`,
+      });
+    }
+  };
+
+  // ===========================================================================
   // DATA IMPORT/EXPORT HANDLERS
   // ===========================================================================
 
@@ -517,13 +611,7 @@ function App() {
    * @param {string} timeStr - The time string in HH:mm format.
    * @returns {string} The formatted time string.
    */
-  function formatTime12(timeStr) {
-    if (!timeStr) return "";
-    const [h, m] = timeStr.split(":").map(Number);
-    let hour = h % 12 || 12;
-    const ampm = h < 12 ? "AM" : "PM";
-    return `${hour}:${m.toString().padStart(2, "0")} ${ampm}`;
-  }
+ 
 
   // ===========================================================================
   // RENDER METHOD
@@ -862,56 +950,68 @@ function App() {
           >
             <Card className={`bg-card/80 backdrop-blur-sm border border-border/50 rounded-xl shadow-sm hover:scale-[1.02] hover:shadow-lg transition-all duration-300 sidebar-focus`}>
               <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Clock className="h-5 w-5 text-primary" />
-                  <span>Today's Focus</span>
+                <CardTitle className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <CheckCircle className="h-5 w-5 text-primary" />
+                    <span>Quick TODOs</span>
+                  </div>
+                  <Button
+                    onClick={() => openTodoForm()}
+                    size="sm"
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg transition-all duration-300 hover:shadow-md active:scale-95"
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    Add
+                  </Button>
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {getTasksForDate(now).length === 0 ? (
+                {todos.length === 0 ? (
                   <div className="text-center py-4">
                     <CheckCircle className="h-8 w-8 mx-auto mb-2 text-muted-foreground/50" />
                     <p className="text-muted-foreground text-sm">
-                      No tasks for today
+                      No TODOs yet
                     </p>
                     <p className="text-muted-foreground/70 text-xs mt-1">
-                      Enjoy your free time!
+                      Add quick tasks to stay organized!
                     </p>
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {getTasksForDate(now).map((task) => (
+                    {todos.map((todo) => (
                       <div
-                        key={task.id}
-                        className="bg-card/80 backdrop-blur-sm border border-border/50 rounded-lg shadow-sm p-3 cursor-pointer transition-all duration-300 hover:scale-[1.02] hover:shadow-lg hover:bg-accent/30"
-                        onClick={() => openTaskForm(task)}
+                        key={todo.id}
+                        className="bg-card/80 backdrop-blur-sm border border-border/50 rounded-lg shadow-sm p-3 transition-all duration-300 hover:scale-[1.02] hover:shadow-lg hover:bg-accent/30"
                       >
-                        <div className="flex items-center justify-between w-full">
+                        <div className="flex items-center justify-between w-full gap-2">
                           <div className="flex items-center space-x-3 flex-1 min-w-0">
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                toggleTaskComplete(task.id);
+                                toggleTodoComplete(todo.id);
                               }}
-                              className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-300 ${
-                                task.isCompleted
+                              className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-300 flex-shrink-0 ${
+                                todo.isCompleted
                                   ? "border-[var(--accent-2)] hover:border-[var(--accent-2)]"
                                   : "border-muted-foreground/30 hover:border-[var(--accent-2)]"
                               }`}
                               style={{
-                                background: task.isCompleted
+                                background: todo.isCompleted
                                   ? "var(--accent-2)"
                                   : "transparent",
                               }}
                             >
-                              {task.isCompleted && (
+                              {todo.isCompleted && (
                                 <CheckCircle className="h-3 w-3 text-white" />
                               )}
                             </button>
-                            <div className="flex-1 min-w-0">
+                            <div 
+                              className="flex-1 min-w-0 cursor-pointer"
+                              onClick={() => openTodoForm(todo)}
+                            >
                               <p
                                 className={`text-sm font-medium ${
-                                  task.isCompleted
+                                  todo.isCompleted
                                     ? "line-through text-muted-foreground"
                                     : ""
                                 }`}
@@ -923,29 +1023,49 @@ function App() {
                                   width: "100%",
                                   maxWidth: "100%",
                                 }}
-                                title={task.title}
+                                title={todo.title}
                               >
-                                {task.title}
+                                {todo.title}
                               </p>
-                              {task.dueTime && (
-                                <p className="text-xs text-muted-foreground">
-                                  {formatTime12(task.dueTime)}
+                              {todo.description && (
+                                <p 
+                                  className="text-xs text-muted-foreground"
+                                  style={{
+                                    whiteSpace: "nowrap",
+                                    overflow: "hidden",
+                                    textOverflow: "ellipsis",
+                                  }}
+                                  title={todo.description}
+                                >
+                                  {todo.description}
                                 </p>
                               )}
                             </div>
                           </div>
-                          <Badge
-                            variant={
-                              task.priority === "high"
-                                ? "destructive"
-                                : task.priority === "medium"
-                                ? "default"
-                                : "secondary"
-                            }
-                            className="text-xs min-w-[60px] text-center"
-                          >
-                            {task.priority}
-                          </Badge>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <Badge
+                              variant={
+                                todo.priority === "high"
+                                  ? "destructive"
+                                  : todo.priority === "medium"
+                                  ? "default"
+                                  : "secondary"
+                              }
+                              className="text-xs min-w-[60px] text-center"
+                            >
+                              {todo.priority}
+                            </Badge>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                deleteTodo(todo.id);
+                              }}
+                              className="text-muted-foreground hover:text-destructive transition-colors p-1"
+                              aria-label="Delete TODO"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -1029,6 +1149,17 @@ function App() {
               editingTask ? (data) => updateTask(editingTask.id, data) : addTask
             }
             onCancel={closeTaskForm}
+          />
+        )}
+
+        {/* SimpleTodoForm Modal */}
+        {showTodoForm && (
+          <SimpleTodoForm
+            todo={editingTodo}
+            onSave={
+              editingTodo ? (data) => updateTodo(editingTodo.id, data) : addTodo
+            }
+            onCancel={closeTodoForm}
           />
         )}
 
