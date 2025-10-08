@@ -1010,24 +1010,51 @@ function App() {
                               className="flex-1 min-w-0 cursor-pointer"
                               onClick={() => openTodoForm(todo)}
                             >
-                              <p
-                                className={`text-sm font-medium ${
-                                  todo.isCompleted
-                                    ? "line-through text-muted-foreground"
-                                    : ""
-                                }`}
-                                style={{
-                                  whiteSpace: "nowrap",
-                                  overflow: "hidden",
-                                  textOverflow: "ellipsis",
-                                  display: "block",
-                                  width: "100%",
-                                  maxWidth: "100%",
-                                }}
-                                title={todo.title}
-                              >
-                                {todo.title}
-                              </p>
+                              {(() => {
+                                const words = todo.title.trim().split(/\s+/);
+                                if (words.length > 4) {
+                                  return (
+                                    <p
+                                      className={`text-sm font-medium ${
+                                        todo.isCompleted
+                                          ? "line-through text-muted-foreground"
+                                          : ""
+                                      }`}
+                                      style={{
+                                        whiteSpace: "nowrap",
+                                        overflow: "hidden",
+                                        textOverflow: "ellipsis",
+                                        display: "block",
+                                        width: "100%",
+                                        maxWidth: "100%",
+                                      }}
+                                      title={todo.title}
+                                    >
+                                      {words.slice(0, 3).join(" ") + " ..."}
+                                    </p>
+                                  );
+                                } else {
+                                  return (
+                                    <p
+                                      className={`text-sm font-medium ${
+                                        todo.isCompleted
+                                          ? "line-through text-muted-foreground"
+                                          : ""
+                                      }`}
+                                      style={{
+                                        whiteSpace: "normal",
+                                        wordBreak: "break-word",
+                                        display: "block",
+                                        width: "100%",
+                                        maxWidth: "100%",
+                                      }}
+                                      title={todo.title}
+                                    >
+                                      {todo.title}
+                                    </p>
+                                  );
+                                }
+                              })()}
                               {todo.description && (
                                 <p 
                                   className="text-xs text-muted-foreground"
