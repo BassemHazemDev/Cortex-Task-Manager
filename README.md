@@ -4,6 +4,9 @@
 
 Cortex Task Manager is a robust, professional-grade web application designed to streamline personal and team productivity. Leveraging modern technologies such as React and Vite, Cortex Task Manager provides an intuitive interface, advanced scheduling algorithms, and a modular architecture for extensibility. The application is suitable for individuals, professionals, and organizations seeking efficient task management, smart scheduling, and real-time notifications.
 
+## Try Cortex
+[Cortex Task Manager](https://cortex-task-manager.vercel.app/)
+
 ## Key Features
 
 - **Task Management**: Create, edit, delete, and categorize tasks with support for priorities, deadlines, and custom tags.
