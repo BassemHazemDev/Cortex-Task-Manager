@@ -219,9 +219,9 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
   };
 
   return (
-    <div className="space-y-6 p-4" style={{ background: 'var(--card)', color: 'var(--card-foreground)', minHeight: '100vh' }}>
+    <div className="space-y-6 p-4" style={{ background: 'var(--card)', color: 'var(--card-foreground)', minHeight: '100vh', maxWidth: '100%', overflow: 'hidden' }}>
   {/* Main calendar grid displaying the current view and navigation controls */}
-      <Card style={{ background: 'var(--background)', color: 'var(--foreground)' }} className="rounded-xl shadow-md">
+      <Card style={{ background: 'var(--background)', color: 'var(--foreground)', maxWidth: '100%' }} className="rounded-xl shadow-md">
         <CardHeader className="p-4 border-b">
           <div className="flex items-center justify-between">
             <CardTitle className="text-xl font-bold" style={{ color: 'var(--foreground)' }}>
@@ -278,9 +278,9 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
             </Button>
           </div>
         </CardHeader>
-        <CardContent className="p-4">
+        <CardContent className="p-4" style={{ maxWidth: '100%', overflow: 'hidden' }}>
           {/* Header row displaying day names */}
-          <div className={`grid gap-1 mb-2 ${viewMode === 'month' ? 'grid-cols-7' : viewMode === 'week' ? 'grid-cols-7' : 'grid-cols-3'}`}>
+          <div className={`grid gap-1 mb-2 ${viewMode === 'month' ? 'grid-cols-7' : viewMode === 'week' ? 'grid-cols-7' : 'grid-cols-3'}`} style={{ maxWidth: '100%' }}>
             {(viewMode === 'month' || viewMode === 'week' ? dayNames : days.map(d => d.toLocaleDateString('en-US', { weekday: 'short' }))).map((day, index) => (
               <div key={`${day}-${index}`} className="p-2 text-center text-sm font-medium" style={{ color: 'var(--muted-foreground)' }}>
                 {viewMode === '3day' ? `${day} ${days[index].getDate()}` : day}
@@ -288,7 +288,7 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
             ))}
           </div>
           {/* Calendar days grid: each cell represents a day and displays tasks */}
-          <div className={`grid gap-1 ${viewMode === 'month' ? 'grid-cols-7' : viewMode === 'week' ? 'grid-cols-7' : 'grid-cols-3'}`}>
+          <div className={`grid gap-1 ${viewMode === 'month' ? 'grid-cols-7' : viewMode === 'week' ? 'grid-cols-7' : 'grid-cols-3'}`} style={{ maxWidth: '100%' }}>
             {days.map((date, index) => {
               if (!date && viewMode === 'month') return <div key={index} />;
               if (!date) return null;
@@ -332,7 +332,7 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
                 <div
                   key={`${date.toISOString()}-${index}`}
                   className={`border rounded-lg cursor-pointer transition-all duration-200 hover:shadow-lg hover:-translate-y-1 calendar-card ${getCellHeight()} p-4`}
-                  style={{ background: dayBg, borderColor: dayBorder, color: dayText }}
+                  style={{ background: dayBg, borderColor: dayBorder, color: dayText, minWidth: 0, overflow: 'hidden' }}
                   onClick={() => onDateSelect(date)}
                   onDoubleClick={(e) => {
                     // Prevent the parent's click handler from toggling selection twice
@@ -369,7 +369,7 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
                   <div className="text-sm font-semibold text-right mb-1" style={{ color: dayText }}>
                     {date.getDate()}
                   </div>
-                  <div className="space-y-1 calendar-card-content">
+                  <div className="space-y-1 calendar-card-content" style={{ maxWidth: '100%', overflow: 'hidden' }}>
                     {(() => {
                       // In month view, always show all tasks
                       if (viewMode === 'month') {
@@ -400,7 +400,7 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
                         <div
                           key={task.id}
                           className={`text-xs p-1 rounded shadow-md transition-all duration-200 cursor-pointer hover:scale-[1.03] hover:shadow-lg hover:bg-[var(--accent)] hover:text-[var(--accent-foreground)]`}
-                          style={{ background: bg, color, textDecoration: task.isCompleted ? 'line-through' : 'none', display: 'flex', alignItems: 'flex-start', gap: expanded ? '0.15rem' : '0', flexDirection: expanded && task.title && task.title.length > 18 ? 'column' : 'row', opacity: draggedTaskId === task.id ? 0.5 : opacity }}
+                          style={{ background: bg, color, textDecoration: task.isCompleted ? 'line-through' : 'none', display: 'flex', alignItems: 'flex-start', gap: expanded ? '0.15rem' : '0', flexDirection: expanded && task.title && task.title.length > 18 ? 'column' : 'row', opacity: draggedTaskId === task.id ? 0.5 : opacity, maxWidth: '100%', overflow: 'hidden' }}
                           onClick={(e) => {
                             e.stopPropagation();
                             onTaskClick(task);
@@ -409,7 +409,7 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
                           onDragStart={(e) => handleDragStart(e, task.id)}
                           onDragEnd={handleDragEnd}
                         >
-                          <span style={{ wordBreak: 'break-word', whiteSpace: 'normal' }}>{task.title}</span>
+                          <span style={{ wordBreak: 'break-word', whiteSpace: 'normal', overflow: 'hidden', textOverflow: 'ellipsis' }}>{task.title}</span>
                           {expanded && task.dueTime && (
                             <span style={{ fontWeight: 600, color: 'var(--muted-foreground)', fontSize: '0.95em', marginLeft: expanded && task.title && task.title.length > 18 ? 0 : '0.25rem', marginTop: expanded && task.title && task.title.length > 18 ? '2px' : 0 }}>
                               {formatTime12(task.dueTime)}
@@ -442,7 +442,7 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
 
   {/* Details card for the currently selected date, showing tasks and progress */}
       {selectedDate && (
-        <Card style={{ background: 'var(--background)', color: 'var(--foreground)' }} className="rounded-xl shadow-md">
+        <Card style={{ background: 'var(--background)', color: 'var(--foreground)', maxWidth: '100%' }} className="rounded-xl shadow-md">
           <CardHeader className="p-4 border-b">
             <CardTitle className="flex items-center space-x-2 text-lg font-bold" style={{ color: 'var(--foreground)' }}>
               <Clock className="h-5 w-5" style={{ color: 'var(--primary)' }} />
