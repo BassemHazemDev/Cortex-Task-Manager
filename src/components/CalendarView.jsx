@@ -400,7 +400,20 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
                         <div
                           key={task.id}
                           className={`text-xs p-1 rounded shadow-md transition-all duration-200 cursor-pointer hover:scale-[1.03] hover:shadow-lg hover:bg-[var(--accent)] hover:text-[var(--accent-foreground)]`}
-                          style={{ background: bg, color, textDecoration: task.isCompleted ? 'line-through' : 'none', display: 'flex', alignItems: 'flex-start', gap: expanded ? '0.15rem' : '0', flexDirection: expanded && task.title && task.title.length > 18 ? 'column' : 'row', opacity: draggedTaskId === task.id ? 0.5 : opacity, maxWidth: '100%', overflow: 'hidden' }}
+                          style={{ 
+                            background: bg, 
+                            color, 
+                            textDecoration: task.isCompleted ? 'line-through' : 'none', 
+                            display: 'flex', 
+                            alignItems: 'flex-start', 
+                            gap: expanded ? '0.15rem' : '0', 
+                            flexDirection: expanded && task.title && task.title.length > 18 ? 'column' : 'row', 
+                            opacity: draggedTaskId === task.id ? 0.5 : opacity, 
+                            maxWidth: '100%', 
+                            overflow: 'hidden',
+                            wordBreak: 'break-word',
+                            overflowWrap: 'break-word'
+                          }}
                           onClick={(e) => {
                             e.stopPropagation();
                             onTaskClick(task);
@@ -409,7 +422,14 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
                           onDragStart={(e) => handleDragStart(e, task.id)}
                           onDragEnd={handleDragEnd}
                         >
-                          <span style={{ wordBreak: 'break-word', whiteSpace: 'normal', overflow: 'hidden', textOverflow: 'ellipsis' }}>{task.title}</span>
+                          <span style={{ 
+                            wordBreak: 'break-word', 
+                            whiteSpace: 'normal', 
+                            overflow: 'hidden', 
+                            textOverflow: 'ellipsis',
+                            maxWidth: '100%',
+                            display: 'block'
+                          }}>{task.title}</span>
                           {expanded && task.dueTime && (
                             <span style={{ fontWeight: 600, color: 'var(--muted-foreground)', fontSize: '0.95em', marginLeft: expanded && task.title && task.title.length > 18 ? 0 : '0.25rem', marginTop: expanded && task.title && task.title.length > 18 ? '2px' : 0 }}>
                               {formatTime12(task.dueTime)}
