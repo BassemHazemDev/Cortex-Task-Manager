@@ -949,7 +949,7 @@ function App() {
 
           {/* === SIDEBAR === */}
           <div
-            className={`sidebar-area ${calendarExpanded && !isMobile ? "sidebar-below flex-row flex-wrap gap-8" : "space-y-6"}`}
+            className={`sidebar-area ${calendarExpanded && !isMobile ? "sidebar-below flex-row flex-wrap gap-8 px-[0.5rem] py-[1rem]" : "space-y-6"}`}
             style={{
               transition: "all 0.5s cubic-bezier(0.4,0,0.2,1)",
             }}
