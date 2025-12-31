@@ -1,9 +1,10 @@
 import { formatDateTimeContext } from "@/lib/utils.js";
 import { useState, memo, useMemo, useCallback } from "react";
 import { useDateRefresh } from "../hooks/useDateRefresh";
-import { CheckCircle, Clock, Calendar, Trash2, Filter } from "lucide-react";
+import { CheckCircle, Clock, Calendar, Trash2, Filter, ListChecks, ChevronDown, ChevronUp } from "lucide-react";
 import { isOverdue } from "../utils/dateUtils";
 import { playCompleteSound } from "../utils/audioUtils";
+import { getTagColorClass } from "../utils/tagUtils";
 import { Button } from "@/components/ui/button.jsx";
 import {
   Card,
@@ -41,10 +42,10 @@ function TagFilter({ tasks, tagFilter, setTagFilter }) {
         <button
           key={tag}
           type="button"
-          className={`px-2 py-1 rounded text-xs border ${
+          className={`px-2 py-1 rounded text-xs border transition-colors ${
             tagFilter.includes(tag)
-              ? "bg-accent border-accent text-accent-foreground"
-              : "bg-muted border-border text-muted-foreground"
+              ? getTagColorClass(tag) + " ring-1 ring-offset-1 ring-primary"
+              : "bg-muted border-border text-muted-foreground hover:bg-muted/80"
           }`}
           onClick={() => toggleTag(tag)}
         >
@@ -55,9 +56,23 @@ function TagFilter({ tasks, tagFilter, setTagFilter }) {
   );
 }
 
-const TaskList = ({ tasks, onTaskClick, onToggleComplete, onDeleteTask }) => {
+const TaskList = ({ tasks, onTaskClick, onToggleComplete, onDeleteTask, onToggleSubtask }) => {
   // Use the date refresh hook to handle midnight transitions
   const { getToday, getTomorrow, getDayAfterTomorrow, now } = useDateRefresh();
+  
+  const [expandedTasks, setExpandedTasks] = useState(new Set());
+
+  const toggleExpand = (taskId) => {
+    setExpandedTasks(prev => {
+      const next = new Set(prev);
+      if (next.has(taskId)) {
+        next.delete(taskId);
+      } else {
+        next.add(taskId);
+      }
+      return next;
+    });
+  };
   
   const [search, setSearch] = useState("");
   // Converts a time string (HH:mm) to 12-hour format with AM/PM for better readability
@@ -393,7 +408,7 @@ const TaskList = ({ tasks, onTaskClick, onToggleComplete, onDeleteTask }) => {
                               <Badge
                                 key={tag}
                                 variant="outline"
-                                className="text-xs truncate max-w-[120px]"
+                                className={`text-xs truncate max-w-[120px] ${getTagColorClass(tag)}`}
                                 title={tag.length > 15 ? tag : undefined}
                               >
                                 {tag}
@@ -463,25 +478,93 @@ const TaskList = ({ tasks, onTaskClick, onToggleComplete, onDeleteTask }) => {
                             <span>{task.estimatedDuration}m</span>
                           </div>
                         )}
+
+                        {task.subtasks && task.subtasks.length > 0 && (
+                          <div className="flex items-center space-x-1" title="Subtasks completed">
+                            <ListChecks className="h-4 w-4" />
+                            <span>
+                              {task.subtasks.filter((st) => st.isCompleted).length}/
+                              {task.subtasks.length}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
 
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onDeleteTask(task.id);
-                    }}
-                    style={{
-                      color: "var(--destructive)",
-                      background: "transparent",
-                    }}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                 <div className="flex flex-col items-center space-y-2">
+                    {task.subtasks && task.subtasks.length > 0 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleExpand(task.id);
+                        }}
+                        className="h-8 w-8 p-0"
+                      >
+                       {expandedTasks.has(task.id) ? (
+                          <ChevronUp className="h-4 w-4" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4" />
+                        )}
+                      </Button>
+                    )}
+
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDeleteTask(task.id);
+                      }}
+                      style={{
+                        color: "var(--destructive)",
+                        background: "transparent",
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
+
+                {/* Subtasks List */}
+                {expandedTasks.has(task.id) && task.subtasks && task.subtasks.length > 0 && (
+                  <div className="mt-4 pl-8 space-y-2 border-l-2 border-border/50 ml-2">
+                    {task.subtasks.map((subtask) => (
+                      <div 
+                        key={subtask.id} 
+                        className="flex items-center space-x-3 group"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <button
+                          onClick={(e) => {
+                             e.stopPropagation();
+                             if(onToggleSubtask) onToggleSubtask(task.id, subtask.id);
+                          }}
+                          className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 transition-colors ${
+                            subtask.isCompleted
+                              ? "bg-primary border-primary"
+                              : "border-muted-foreground/50 hover:border-primary"
+                          }`}
+                        >
+                          {subtask.isCompleted && (
+                            <CheckCircle className="h-3 w-3 text-primary-foreground" />
+                          )}
+                        </button>
+                        <span 
+                          className={`text-sm transition-all ${
+                            subtask.isCompleted 
+                              ? "text-muted-foreground line-through" 
+                              : "text-foreground"
+                          }`}
+                        >
+                          {subtask.title}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))

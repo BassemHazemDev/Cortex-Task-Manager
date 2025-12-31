@@ -38,6 +38,7 @@ import {
   Expand,
   ChevronsDownUp,
   Trash2,
+  Keyboard,
 } from "lucide-react"; // Icon library for a clean UI
 import { Button } from "@/components/ui/button.jsx";
 import {
@@ -60,7 +61,6 @@ import {
   loadAppSetting,
   saveAppSetting,
 } from "./utils/storage"; // Utility functions for data handling
-import { playCompleteSound } from "./utils/audioUtils";
 import { isOverdue } from "./utils/dateUtils";
 import { useTasks } from "./contexts/TaskContext";
 import { useTodos } from "./contexts/TodoContext";
@@ -70,6 +70,7 @@ import Footer from "./components/Footer";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { SortableTodoItem } from './components/SortableTodoItem';
+import ShortcutsModal from './components/ShortcutsModal';
 
 function App() {
   // Use the date refresh hook to handle midnight transitions
@@ -85,7 +86,7 @@ function App() {
     updateTask: contextUpdateTask,
     deleteTask: contextDeleteTask,
     toggleTaskComplete: contextToggleTaskComplete,
-    hasTimeConflict,
+    toggleSubtaskComplete: contextToggleSubtaskComplete,
     getPendingTasks,
     getCompletedTasks,
   } = useTasks();
@@ -131,6 +132,9 @@ function App() {
   const [showCompletedTodos, setShowCompletedTodos] = useState(false);
   const [completedTodosPage, setCompletedTodosPage] = useState(1);
   const completedTodosPerPage = 5;
+
+
+  const [showShortcutsModal, setShowShortcutsModal] = useState(false);
 
   // =========================================================================
   // MEMOIZED VALUES
@@ -179,7 +183,10 @@ function App() {
     if (showSettingsModal) {
       setShowSettingsModal(false);
     }
-  }, [showTaskForm, showTodoForm, showSettingsModal, setShowSettingsModal]);
+    if (showShortcutsModal) {
+      setShowShortcutsModal(false);
+    }
+  }, [showTaskForm, showTodoForm, showSettingsModal, showShortcutsModal, setShowSettingsModal]);
 
   // Register keyboard shortcuts (using Alt+ to avoid browser conflicts)
   useKeyboardShortcuts({
@@ -196,6 +203,8 @@ function App() {
     'alt+2': () => setCurrentView('tasks'),
     'alt+3': () => setCurrentView('scheduler'),
     'alt+d': toggleDarkMode,
+    '?': () => setShowShortcutsModal(true),
+    'shift+?': () => setShowShortcutsModal(true),
   });
 
   // Dnd-kit sensors
@@ -242,104 +251,34 @@ function App() {
    * Adds a new task or a series of recurring tasks.
    * @param {object} taskData - The data for the new task from the form.
    */
-  const addTask = (taskData) => {
-    // Check for time conflict for single and repeated tasks
-    if (
-      taskData.repeatUntil &&
-      taskData.repeatFrequency !== "none" &&
-      taskData.dueDate
-    ) {
-      const repeatedTasks = [];
-      // Parse the initial date and time
-      let currentDate = new Date(
-        `${taskData.dueDate}T${taskData.dueTime || "00:00"}`
-      );
-      const repeatUntilDate = new Date(
-        `${taskData.repeatUntil}T${taskData.dueTime || "00:00"}`
-      );
-      let i = 0;
-      let conflictFound = false;
+  const handleAddTask = (taskData) => {
+    // Delegate to context which handles recurrence and conflicts
+    const result = contextAddTask(taskData);
 
-      while (currentDate <= repeatUntilDate) {
-        // Format date and time for each repeated task
-        const pad = (n) => n.toString().padStart(2, "0");
-        const candidateDate = `${currentDate.getFullYear()}-${pad(
-          currentDate.getMonth() + 1
-        )}-${pad(currentDate.getDate())}`;
-        const candidateTime = `${pad(currentDate.getHours())}:${pad(
-          currentDate.getMinutes()
-        )}`;
-        const candidate = {
-          ...taskData,
-          dueDate: candidateDate,
-          dueTime: candidateTime,
-        };
-        if (hasTimeConflict(candidate, tasks)) {
-          conflictFound = true;
-          break;
-        }
-        repeatedTasks.push({
-          ...candidate,
-          id: Date.now() + i,
-          isCompleted: false,
-          assignedSlot: null,
-        });
-        // Increment the date based on the chosen frequency, preserving the time
-        switch (taskData.repeatFrequency) {
-          case "daily":
-            currentDate.setDate(currentDate.getDate() + 1);
-            break;
-          case "weekly":
-            currentDate.setDate(currentDate.getDate() + 7);
-            break;
-          case "monthly":
-            currentDate.setMonth(currentDate.getMonth() + 1);
-            break;
-          case "yearly":
-            currentDate.setFullYear(currentDate.getFullYear() + 1);
-            break;
-          default:
-            break;
-        }
-        i++;
-      }
-      if (conflictFound) {
-        showNotification({
-          type: "error",
-          message: "Time conflict detected",
-          details: `One or more repeated tasks overlap with existing tasks. Please adjust the time or duration.`,
-        });
-        return;
-      }
-      setTasks([...tasks, ...repeatedTasks]);
+    if (result.success) {
       setShowTaskForm(false);
-      showNotification({
-        type: "success",
-        message: "Repeated tasks created",
-        details: `${repeatedTasks.length} tasks have been added (${taskData.repeatFrequency} until ${taskData.repeatUntil})`,
-      });
+      
+      if (result.tasksAdded) {
+        // Recurring tasks
+        showNotification({
+          type: "success",
+          message: "Repeated tasks created",
+          details: result.message,
+        });
+      } else {
+        // Single task
+        showNotification({
+          type: "success",
+          message: "Task created successfully",
+          details: `"${result.task.title}" has been added to your list`,
+        });
+      }
     } else {
-      // Logic for adding a single, non-recurring task.
-      if (hasTimeConflict(taskData, tasks)) {
-        showNotification({
-          type: "error",
-          message: "Time conflict detected",
-          details: `This task overlaps with an existing task. Please adjust the time or duration.`,
-        });
-        return;
-      }
-      const newTask = {
-        ...taskData,
-        id: Date.now(),
-        isCompleted: false,
-        assignedSlot: null,
-      };
-      setTasks([...tasks, newTask]);
-      setShowTaskForm(false);
+      // Error (e.g. conflict)
       showNotification({
-        type: "success",
-        message: "Task created successfully",
-        details: `"${taskData.title}" has been added to your list`,
+        type: "error",
+        message: "Failed to add task",
+        details: result.message,
       });
     }
   };
@@ -349,37 +288,31 @@ function App() {
    * @param {number} taskId - The ID of the task to update.
    * @param {object} updates - An object containing the properties to update.
    */
-  const updateTask = (taskId, updates) => {
-    // Exclude the current task from conflict check
-    const otherTasks = tasks.filter((task) => task.id !== taskId);
-    if (hasTimeConflict(updates, otherTasks)) {
+  const handleUpdateTask = (taskId, updates) => {
+    const result = contextUpdateTask(taskId, updates);
+    
+    if (result.success) {
+      setEditingTask(null);
+      setShowTaskForm(false);
       showNotification({
-        type: "error",
-        message: "Time conflict detected",
-        details: `This task overlaps with an existing task. Please adjust the time or duration.`,
+        type: "success",
+        message: "Task updated successfully",
       });
-      return;
+    } else {
+       showNotification({
+        type: "error",
+        message: "Failed to update task",
+        details: result.message,
+      });
     }
-    setTasks(
-      tasks.map((task) => (task.id === taskId ? { ...task, ...updates } : task))
-    );
-    setEditingTask(null);
-    setShowTaskForm(false);
-
-    showNotification({
-      type: "success",
-      message: "Task updated successfully",
-    });
   };
 
   /**
    * Deletes a task from the list.
    * @param {number} taskId - The ID of the task to delete.
    */
-  const deleteTask = (taskId) => {
-    const task = tasks.find((t) => t.id === taskId);
-    setTasks(tasks.filter((task) => task.id !== taskId));
-
+  const handleDeleteTask = (taskId) => {
+    const task = contextDeleteTask(taskId);
     showNotification({
       type: "info",
       message: "Task deleted",
@@ -391,18 +324,9 @@ function App() {
    * Toggles the completion status of a task.
    * @param {number} taskId - The ID of the task to toggle.
    */
-  const toggleTaskComplete = (taskId) => {
-    const task = tasks.find((t) => t.id === taskId);
-    const newStatus = !task.isCompleted;
-
-    setTasks(
-      tasks.map((task) =>
-        task.id === taskId ? { ...task, isCompleted: newStatus } : task
-      )
-    );
-
-    if (newStatus) playCompleteSound();
-
+  const handleToggleTaskComplete = (taskId) => {
+    const { task, newStatus } = contextToggleTaskComplete(taskId);
+    // Sound is played in context
     showNotification({
       type: "success",
       message: newStatus ? "Task completed!" : "Task reopened",
@@ -410,6 +334,17 @@ function App() {
         newStatus ? "marked as complete" : "marked as pending"
       }`,
     });
+  };
+
+  /**
+   * Toggles the completion status of a subtask.
+   * @param {number} taskId - The ID of the parent task.
+   * @param {number} subtaskId - The ID of the subtask.
+   */
+  const handleToggleSubtaskComplete = (taskId, subtaskId) => {
+    contextToggleSubtaskComplete(taskId, subtaskId);
+    // Optional: Play a softer sound or partial success sound here.
+    // For now, no notification to keep it lightweight.
   };
 
   // ===========================================================================
@@ -474,38 +409,22 @@ function App() {
     return tasks.filter((task) => isOverdue(task, now));
   };
 
-  // ===========================================================================
-  // TODO HANDLERS (Simple TODOs separate from calendar tasks)
-  // ===========================================================================
+  // =========================================================================
+  // TODO HANDLERS (Simple TODOs)
+  // =========================================================================
 
-  /**
-   * Opens the TODO form for adding or editing a TODO.
-   * @param {object} todo - The TODO to edit (null for new TODO).
-   */
   const openTodoForm = (todo = null) => {
     setEditingTodo(todo);
     setShowTodoForm(true);
   };
 
-  /**
-   * Closes the TODO form.
-   */
   const closeTodoForm = () => {
     setShowTodoForm(false);
     setEditingTodo(null);
   };
 
-  /**
-   * Adds a new TODO.
-   * @param {object} todoData - The data for the new TODO.
-   */
-  const addTodo = (todoData) => {
-    const newTodo = {
-      id: Date.now(),
-      ...todoData,
-      isCompleted: false,
-    };
-    setTodos((prev) => [...prev, newTodo]);
+  const handleAddTodo = (todoData) => {
+    const newTodo = contextAddTodo(todoData);
     closeTodoForm();
     showNotification({
       type: "success",
@@ -514,15 +433,8 @@ function App() {
     });
   };
 
-  /**
-   * Updates an existing TODO.
-   * @param {number} id - The ID of the TODO to update.
-   * @param {object} updates - The updated TODO data.
-   */
-  const updateTodo = (id, updates) => {
-    setTodos((prev) =>
-      prev.map((todo) => (todo.id === id ? { ...todo, ...updates } : todo))
-    );
+  const handleUpdateTodo = (id, updates) => {
+    contextUpdateTodo(id, updates);
     closeTodoForm();
     showNotification({
       type: "success",
@@ -531,13 +443,8 @@ function App() {
     });
   };
 
-  /**
-   * Deletes a TODO by ID.
-   * @param {number} id - The ID of the TODO to delete.
-   */
-  const deleteTodo = (id) => {
-    const todo = todos.find((t) => t.id === id);
-    setTodos((prev) => prev.filter((t) => t.id !== id));
+  const handleDeleteTodo = (id) => {
+    const todo = contextDeleteTodo(id);
     showNotification({
       type: "success",
       message: "TODO deleted",
@@ -545,19 +452,10 @@ function App() {
     });
   };
 
-  /**
-   * Toggles the completion status of a TODO.
-   * @param {number} id - The ID of the TODO to toggle.
-   */
-  const toggleTodoComplete = (id) => {
-    setTodos((prev) =>
-      prev.map((todo) =>
-        todo.id === id ? { ...todo, isCompleted: !todo.isCompleted } : todo
-      )
-    );
-    const todo = todos.find((t) => t.id === id);
-    if (todo && !todo.isCompleted) {
-      playCompleteSound();
+  const handleToggleTodoComplete = (id) => {
+    const { todo, newStatus } = contextToggleTodoComplete(id);
+    if (newStatus) {
+       // Sound is played in context
       showNotification({
         type: "success",
         message: "TODO completed! 🎉",
@@ -631,6 +529,16 @@ function App() {
             <div className="flex items-center space-x-3 header-controls">
               {/* Settings and Dark Mode */}
               <div className="flex items-center space-x-2 header-buttons">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  aria-label="Shortcuts"
+                  onClick={() => setShowShortcutsModal(true)}
+                  className="transition-all duration-300 hover:shadow-md active:scale-95 button"
+                >
+                  <Keyboard className="h-4 w-4 mr-2" />
+                  Shortcuts
+                </Button>
                 <Button
                   variant="outline"
                   size="sm"
@@ -874,39 +782,12 @@ function App() {
                   tasks={tasks}
                   onTaskClick={openTaskForm}
                   onCreateDate={(date) => openTaskForm(date, { isNew: true })}
-                  onToggleComplete={toggleTaskComplete}
+                  onToggleComplete={handleToggleTaskComplete}
                   expanded={calendarExpanded && !isMobile}
                   onTaskDrop={(taskId, newDate) => {
-                    // Find the task
-                    const task = tasks.find((t) => t.id === taskId);
-                    if (!task) return;
-                    // Format new date string
                     const pad = (n) => n.toString().padStart(2, "0");
                     const dateStr = `${newDate.getFullYear()}-${pad(newDate.getMonth() + 1)}-${pad(newDate.getDate())}`;
-                    // If date is unchanged, do nothing
-                    if (task.dueDate === dateStr) return;
-                    // Prepare updates
-                    const updates = { ...task, dueDate: dateStr };
-                    // Exclude current task for conflict check
-                    const otherTasks = tasks.filter((t) => t.id !== taskId);
-                    if (hasTimeConflict(updates, otherTasks)) {
-                      showNotification({
-                        type: "error",
-                        message: "Time conflict detected",
-                        details: `This task overlaps with an existing task. Please adjust the time or duration.`,
-                      });
-                      // No update, revert
-                      return;
-                    }
-                    // Update task
-                    setTasks(
-                      tasks.map((t) => (t.id === taskId ? { ...t, dueDate: dateStr } : t))
-                    );
-                    showNotification({
-                      type: "success",
-                      message: "Task moved successfully",
-                      details: `Task "${task.title}" moved to ${dateStr}`,
-                    });
+                    handleUpdateTask(taskId, { dueDate: dateStr });
                   }}
                 />
               </div>
@@ -916,15 +797,16 @@ function App() {
               <TaskList
                 tasks={tasks}
                 onTaskClick={openTaskForm}
-                onToggleComplete={toggleTaskComplete}
-                onDeleteTask={deleteTask}
+                onToggleComplete={handleToggleTaskComplete}
+                onDeleteTask={handleDeleteTask}
+                onToggleSubtask={handleToggleSubtaskComplete}
               />
             )}
 
             {currentView === "scheduler" && (
               <SmartScheduler
                 tasks={tasks}
-                onUpdateTask={updateTask}
+                onUpdateTask={handleUpdateTask}
                 onShowNotification={showNotification}
                 availableHours={availableHours}
               />
@@ -982,9 +864,9 @@ function App() {
                             <SortableTodoItem
                               key={todo.id}
                               todo={todo}
-                              toggleTodoComplete={toggleTodoComplete}
+                              toggleTodoComplete={handleToggleTodoComplete}
                               openTodoForm={openTodoForm}
-                              deleteTodo={deleteTodo}
+                              deleteTodo={handleDeleteTodo}
                             />
                           ))}
                         </div>
@@ -1045,7 +927,7 @@ function App() {
                                     <button
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        toggleTodoComplete(todo.id);
+                                        handleToggleTodoComplete(todo.id);
                                       }}
                                       className="w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-300 flex-shrink-0 border-[var(--accent-2)] hover:border-[var(--accent-2)] hover:scale-110 cursor-pointer"
                                       style={{ background: "var(--accent-2)" }}
@@ -1102,7 +984,7 @@ function App() {
                                     <button
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        deleteTodo(todo.id);
+                                        handleDeleteTodo(todo.id);
                                       }}
                                       className="text-muted-foreground hover:text-destructive transition-colors p-1"
                                       aria-label="Delete TODO"
@@ -1227,7 +1109,7 @@ function App() {
             task={editingTask}
             initialDate={showTaskForm.initialDate}
             onSave={
-              editingTask ? (data) => updateTask(editingTask.id, data) : addTask
+              editingTask ? (data) => handleUpdateTask(editingTask.id, data) : handleAddTask
             }
             onCancel={closeTaskForm}
           />
@@ -1238,11 +1120,13 @@ function App() {
           <SimpleTodoForm
             todo={editingTodo}
             onSave={
-              editingTodo ? (data) => updateTodo(editingTodo.id, data) : addTodo
+              editingTodo ? (data) => handleUpdateTodo(editingTodo.id, data) : handleAddTodo
             }
             onCancel={closeTodoForm}
           />
         )}
+
+        <ShortcutsModal open={showShortcutsModal} onOpenChange={setShowShortcutsModal} />
 
         {/* Settings Modal Placeholder */}
         {showSettingsModal && (

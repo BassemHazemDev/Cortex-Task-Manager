@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input.jsx";
 import { Textarea } from "@/components/ui/textarea.jsx";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select.jsx";
 import { Label } from "@/components/ui/label.jsx";
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 
 function SimpleTodoForm({ todo, onSave, onCancel }) {
   const [formData, setFormData] = useState(() => {
@@ -76,6 +77,10 @@ function SimpleTodoForm({ todo, onSave, onCancel }) {
       }));
     }
   };
+
+  useKeyboardShortcuts({
+    'ctrl+enter': handleSubmit
+  });
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">

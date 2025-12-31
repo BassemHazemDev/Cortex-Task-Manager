@@ -35,9 +35,15 @@ export function useKeyboardShortcuts(shortcuts, enabled = true) {
             activeElement.isContentEditable
         );
 
-        // Allow Escape to work even when typing
-        if (isTyping && event.key !== 'Escape') {
-            return;
+        // Allow Escape and Ctrl+Enter to work even when typing
+        if (isTyping) {
+            if (event.key === 'Escape') {
+                // Pass through
+            } else if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+                // Pass through
+            } else {
+                return;
+            }
         }
 
         // Build the key combination string

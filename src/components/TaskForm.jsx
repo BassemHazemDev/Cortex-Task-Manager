@@ -10,6 +10,8 @@ import { SubtaskList } from './SubtaskList'
 import { useTaskTemplates } from '@/hooks/useTaskTemplates'
 import { DatePicker } from '@/components/ui/date-picker'
 import { TimePicker } from '@/components/ui/time-picker'
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
+import { getTagColorClass } from '@/utils/tagUtils'
 
 const TaskForm = ({ task, initialDate, onSave, onCancel }) => {
   const [formData, setFormData] = useState(() => {
@@ -238,6 +240,10 @@ const TaskForm = ({ task, initialDate, onSave, onCancel }) => {
     }
   }
 
+  useKeyboardShortcuts({
+    'ctrl+enter': handleSubmit
+  });
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <Card className="w-full max-w-md" style={{ maxHeight: '90vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
@@ -411,12 +417,11 @@ const TaskForm = ({ task, initialDate, onSave, onCancel }) => {
                   <span key={tag} className="flex items-center">
                     <button
                       type="button"
-                      style={{
-                        background: formData.tags.includes(tag) ? 'var(--accent)' : 'var(--card)',
-                        color: formData.tags.includes(tag) ? 'var(--accent-foreground)' : 'var(--muted-foreground)',
-                        border: `1px solid ${formData.tags.includes(tag) ? 'var(--accent)' : 'var(--border)'}`
-                      }}
-                      className="px-2 py-1 rounded text-xs border"
+                      className={`px-2 py-1 rounded text-xs border ${
+                         formData.tags.includes(tag) 
+                           ? getTagColorClass(tag) + " ring-1 ring-primary"
+                           : "bg-background text-muted-foreground border-border hover:bg-muted"
+                      }`}
                       onClick={() => {
                         if (formData.tags.includes(tag)) {
                           removeTag(tag);
@@ -450,9 +455,9 @@ const TaskForm = ({ task, initialDate, onSave, onCancel }) => {
               {/* Shows all selected tags with a delete button for each */}
               <div className="flex flex-wrap gap-2 mt-2">
                 {formData.tags.map(tag => (
-                  <span key={tag} className="bg-blue-100 text-blue-800 px-2 py-1 rounded flex items-center gap-1">
+                  <span key={tag} className={`px-2 py-1 rounded flex items-center gap-1 text-xs border ${getTagColorClass(tag)}`}>
                     {tag}
-                    <button type="button" onClick={() => removeTag(tag)} className="ml-1 text-xs text-red-500">×</button>
+                    <button type="button" onClick={() => removeTag(tag)} className="ml-1 text-inherit opacity-70 hover:opacity-100 font-bold">×</button>
                   </span>
                 ))}
               </div>
