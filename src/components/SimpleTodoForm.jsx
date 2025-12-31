@@ -10,7 +10,7 @@
  * They are stored separately and don't appear in the calendar.
  */
 
-import { useState } from "react";
+import { useState, memo } from "react";
 import { CheckCircle, X, Save } from "lucide-react";
 import { Button } from "@/components/ui/button.jsx";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.jsx";
@@ -170,4 +170,4 @@ function SimpleTodoForm({ todo, onSave, onCancel }) {
   );
 }
 
-export default SimpleTodoForm;
+export default memo(SimpleTodoForm);

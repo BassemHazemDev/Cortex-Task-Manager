@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, memo, useMemo, useCallback } from 'react'
 import { useDateRefresh } from '../hooks/useDateRefresh';
 import { Clock, Lightbulb, RefreshCw, Calendar } from 'lucide-react'
 import { Button } from '@/components/ui/button.jsx'
@@ -433,5 +433,4 @@ const SmartScheduler = ({ tasks, onUpdateTask, onShowNotification, availableHour
   )
 }
 
-export default SmartScheduler
-
+export default memo(SmartScheduler)

@@ -22,9 +22,10 @@
  * =============================================================================
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import dailyTips from "./lib/dailyTips";
 import { useDateRefresh } from "./hooks/useDateRefresh";
+import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import {
   Calendar,
   Plus,
@@ -107,22 +108,6 @@ function App() {
     setCalendarExpanded,
   } = useApp();
 
-  // Daily tip logic: Save tip index in localStorage so it changes only once per day
-  function getDailyTip() {
-    const today = getToday(); // Use the date refresh hook for consistent date
-    const tipData = JSON.parse(localStorage.getItem("dailyTipIndex")) || {};
-    if (tipData.date === today && typeof tipData.index === "number") {
-      return dailyTips[tipData.index];
-    }
-    // Pick a new random tip index for today
-    const newIndex = Math.floor(Math.random() * dailyTips.length);
-    localStorage.setItem(
-      "dailyTipIndex",
-      JSON.stringify({ date: today, index: newIndex })
-    );
-    return dailyTips[newIndex];
-  }
-
   // Detect mobile (simple check)
   const isMobile = window.matchMedia("(max-width: 1023px)").matches;
   
@@ -140,6 +125,61 @@ function App() {
   const [showCompletedTodos, setShowCompletedTodos] = useState(false);
   const [completedTodosPage, setCompletedTodosPage] = useState(1);
   const completedTodosPerPage = 5;
+
+  // =========================================================================
+  // MEMOIZED VALUES
+  // =========================================================================
+  
+  // Memoize daily tip to only change once per day
+  const dailyTip = useMemo(() => {
+    const today = getToday();
+    const tipData = JSON.parse(localStorage.getItem("dailyTipIndex")) || {};
+    if (tipData.date === today && typeof tipData.index === "number") {
+      return dailyTips[tipData.index];
+    }
+    const newIndex = Math.floor(Math.random() * dailyTips.length);
+    localStorage.setItem(
+      "dailyTipIndex",
+      JSON.stringify({ date: today, index: newIndex })
+    );
+    return dailyTips[newIndex];
+  }, [getToday]);
+
+  // =========================================================================
+  // KEYBOARD SHORTCUTS
+  // =========================================================================
+  
+  // Close any open modal
+  const closeAllModals = useCallback(() => {
+    if (showTaskForm) {
+      setShowTaskForm(false);
+      setEditingTask(null);
+    }
+    if (showTodoForm) {
+      setShowTodoForm(false);
+      setEditingTodo(null);
+    }
+    if (showSettingsModal) {
+      setShowSettingsModal(false);
+    }
+  }, [showTaskForm, showTodoForm, showSettingsModal, setShowSettingsModal]);
+
+  // Register keyboard shortcuts (using Alt+ to avoid browser conflicts)
+  useKeyboardShortcuts({
+    'alt+n': () => {
+      setEditingTask(null);
+      setShowTaskForm(true);
+    },
+    'alt+t': () => {
+      setEditingTodo(null);
+      setShowTodoForm(true);
+    },
+    'escape': closeAllModals,
+    'alt+1': () => setCurrentView('calendar'),
+    'alt+2': () => setCurrentView('tasks'),
+    'alt+3': () => setCurrentView('scheduler'),
+    'alt+d': toggleDarkMode,
+  });
 
   // =========================================================================
   // TASK CRUD OPERATIONS (Wrapped with notifications)
@@ -1206,7 +1246,7 @@ function App() {
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-accent-foreground/80 leading-relaxed">
-                  {getDailyTip()}
+                  {dailyTip}
                 </p>
               </CardContent>
             </Card>

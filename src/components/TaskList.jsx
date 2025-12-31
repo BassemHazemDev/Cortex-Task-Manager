@@ -1,5 +1,5 @@
 import { formatDateTimeContext } from "@/lib/utils.js";
-import { useState } from "react";
+import { useState, memo, useMemo, useCallback } from "react";
 import { useDateRefresh } from "../hooks/useDateRefresh";
 import { CheckCircle, Clock, Calendar, Trash2, Filter } from "lucide-react";
 import { isOverdue } from "../utils/dateUtils";
@@ -511,4 +511,4 @@ const TaskList = ({ tasks, onTaskClick, onToggleComplete, onDeleteTask }) => {
   );
 };
 
-export default TaskList;
+export default memo(TaskList);

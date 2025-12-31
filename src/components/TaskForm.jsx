@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, memo, useCallback } from 'react'
 import { X, Save, Calendar, Clock, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button.jsx'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card.jsx'
@@ -370,5 +370,4 @@ const TaskForm = ({ task, initialDate, onSave, onCancel }) => {
   )
 }
 
-export default TaskForm
-
+export default memo(TaskForm)

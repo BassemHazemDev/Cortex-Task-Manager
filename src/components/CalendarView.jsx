@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, memo, useMemo, useCallback } from 'react';
 import { useDateRefresh } from '../hooks/useDateRefresh';
 import { ChevronLeft, ChevronRight, CheckCircle, Clock } from 'lucide-react';
 import { isOverdue, formatTime12 } from '../utils/dateUtils';
@@ -566,4 +566,4 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
   );
 };
 
-export default CalendarView;
+export default memo(CalendarView);
