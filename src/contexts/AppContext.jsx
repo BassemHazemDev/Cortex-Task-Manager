@@ -30,12 +30,10 @@ export function useApp() {
  * AppProvider component that wraps the application and provides global state.
  */
 export function AppProvider({ children }) {
-  // Theme state - load from storage or default to system preference
-  const [isDarkMode, setIsDarkMode] = useState(() => {
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme) return savedTheme === 'dark';
-    return window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false;
-  });
+  // Theme state - default to system preference initially
+  // We will load user preference from DB asynchronously
+  // Theme state - default to false (light mode) initially
+  const [isDarkMode, setIsDarkMode] = useState(false);
 
   // Notifications state
   const [notifications, setNotifications] = useState([]);
@@ -49,19 +47,26 @@ export function AppProvider({ children }) {
   // Available hours state
   const [availableHours, setAvailableHours] = useState({ start: '13:00', end: '22:00' });
 
-  // Load available hours from storage on mount
+  // Load settings (theme + hours) from storage on mount
   useEffect(() => {
-    const loadAvailableHours = async () => {
+    const loadSettings = async () => {
       try {
-        const saved = await loadAppSetting('availableHours', { start: '13:00', end: '22:00' });
-        if (saved?.start && saved?.end) {
-          setAvailableHours(saved);
+        // Load available hours
+        const savedHours = await loadAppSetting('availableHours', { start: '13:00', end: '22:00' });
+        if (savedHours?.start && savedHours?.end) {
+          setAvailableHours(savedHours);
+        }
+
+        // Load theme
+        const savedTheme = await loadAppSetting('theme', null);
+        if (savedTheme !== null) {
+          setIsDarkMode(savedTheme === 'dark');
         }
       } catch (error) {
-        console.error('Error loading available hours:', error);
+        console.error('Error loading settings:', error);
       }
     };
-    loadAvailableHours();
+    loadSettings();
   }, []);
 
   // Save available hours when they change
@@ -71,15 +76,15 @@ export function AppProvider({ children }) {
     }
   }, [availableHours]);
 
-  // Apply dark mode class to document
+  // Apply dark mode class to document and save preference
   useEffect(() => {
     const root = document.documentElement;
     if (isDarkMode) {
       root.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
+      saveAppSetting('theme', 'dark').catch(e => console.error(e));
     } else {
       root.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
+      saveAppSetting('theme', 'light').catch(e => console.error(e));
     }
   }, [isDarkMode]);
 

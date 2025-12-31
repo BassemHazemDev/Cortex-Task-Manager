@@ -12,9 +12,10 @@
  * displayed by the consuming components using AppContext.
  */
 
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { loadTasks, saveTasks, initStorage } from '../utils/storage';
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import { loadTasks, loadTasksAsync, saveTasks, initStorage } from '../utils/storage';
 import { playCompleteSound } from '../utils/audioUtils';
+import { useCrossTabSync, broadcastSync } from '../hooks/useCrossTabSync';
 
 const TaskContext = createContext(null);
 
@@ -35,14 +36,18 @@ export function useTasks() {
  * TaskProvider component that manages task state and operations.
  */
 export function TaskProvider({ children }) {
-  const [tasks, setTasks] = useState(() => loadTasks());
+  const [tasks, setTasks] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  const isSyncing = useRef(false);
 
   // Initialize storage and trigger migration on mount
   useEffect(() => {
     const init = async () => {
       try {
         await initStorage();
+        const loadedTasks = await loadTasksAsync();
+        setTasks(loadedTasks);
       } catch (error) {
         console.error('Error initializing storage:', error);
       } finally {
@@ -52,10 +57,30 @@ export function TaskProvider({ children }) {
     init();
   }, []);
 
+  // Handle cross-tab sync
+  const handleSync = useCallback(async (type) => {
+    if (type === 'tasks') {
+      try {
+        const newTasks = await loadTasksAsync();
+        isSyncing.current = true; // Prevent echo
+        setTasks(newTasks);
+      } catch (error) {
+        console.error('Error syncing tasks:', error);
+      }
+    }
+  }, []);
+
+  useCrossTabSync(handleSync);
+
   // Save tasks to storage whenever they change
   useEffect(() => {
     if (!isLoading) {
+      if (isSyncing.current) {
+        isSyncing.current = false;
+        return;
+      }
       saveTasks(tasks);
+      broadcastSync('TASKS_UPDATED');
     }
   }, [tasks, isLoading]);
 
@@ -234,6 +259,72 @@ export function TaskProvider({ children }) {
   }, [tasks]);
 
   /**
+   * Toggles the completion status of a subtask.
+   * @param {number} taskId - The parent task ID
+   * @param {number} subtaskId - The subtask ID
+   */
+  const toggleSubtaskComplete = useCallback((taskId, subtaskId) => {
+    setTasks(prev => prev.map(task => {
+      if (task.id !== taskId) return task;
+      
+      const subtasks = task.subtasks || [];
+      const updatedSubtasks = subtasks.map(st => 
+        st.id === subtaskId ? { ...st, isCompleted: !st.isCompleted } : st
+      );
+      
+      return { ...task, subtasks: updatedSubtasks };
+    }));
+  }, []);
+
+  /**
+   * Adds a subtask to a task.
+   * @param {number} taskId - Parent task ID
+   * @param {Object} subtask - Subtask data
+   */
+  const addSubtask = useCallback((taskId, subtask) => {
+    setTasks(prev => prev.map(task => {
+      if (task.id !== taskId) return task;
+      return {
+        ...task,
+        subtasks: [...(task.subtasks || []), { ...subtask, id: Date.now(), isCompleted: false }]
+      };
+    }));
+  }, []);
+
+  /**
+   * Updates a subtask.
+   * @param {number} taskId - Parent task ID
+   * @param {number} subtaskId - Subtask ID
+   * @param {Object} updates - Updates to apply
+   */
+  const updateSubtask = useCallback((taskId, subtaskId, updates) => {
+    setTasks(prev => prev.map(task => {
+      if (task.id !== taskId) return task;
+      return {
+        ...task,
+        subtasks: (task.subtasks || []).map(st => 
+          st.id === subtaskId ? { ...st, ...updates } : st
+        )
+      };
+    }));
+  }, []);
+
+  /**
+   * Deletes a subtask.
+   * @param {number} taskId - Parent task ID
+   * @param {number} subtaskId - Subtask ID
+   */
+  const deleteSubtask = useCallback((taskId, subtaskId) => {
+    setTasks(prev => prev.map(task => {
+      if (task.id !== taskId) return task;
+      return {
+        ...task,
+        subtasks: (task.subtasks || []).filter(st => st.id !== subtaskId)
+      };
+    }));
+  }, []);
+
+  /**
    * Gets all pending (incomplete) tasks.
    */
   const getPendingTasks = useCallback(() => {
@@ -255,6 +346,10 @@ export function TaskProvider({ children }) {
     updateTask,
     deleteTask,
     toggleTaskComplete,
+    toggleSubtaskComplete,
+    addSubtask,
+    updateSubtask,
+    deleteSubtask,
     hasTimeConflict,
     getPendingTasks,
     getCompletedTasks,

@@ -14,18 +14,19 @@ import Dexie from 'dexie';
 export const db = new Dexie('CortexTaskManager');
 
 // Define database schema
-// Version 1: Initial schema with tasks, todos, and settings
+// Version 1: Initial schema
 db.version(1).stores({
-    // Tasks table with indexed fields for efficient querying
-    // ++id: auto-incrementing primary key
-    // dueDate, priority, isCompleted: indexed for filtering/sorting
     tasks: '++id, dueDate, priority, isCompleted',
-
-    // Simple todos table
     todos: '++id, isCompleted',
-
-    // Key-value store for app settings (theme, availableHours, etc.)
     settings: 'key'
+});
+
+// Version 2: Added order for todos and templates
+db.version(2).stores({
+    tasks: '++id, dueDate, priority, isCompleted',
+    todos: '++id, isCompleted, order',
+    settings: 'key',
+    templates: '++id' // For Part 5: Task Templates
 });
 
 /**

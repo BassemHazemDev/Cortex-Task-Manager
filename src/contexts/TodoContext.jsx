@@ -11,9 +11,10 @@
  * displayed by the consuming components using AppContext.
  */
 
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { loadTodos, saveTodos } from '../utils/storage';
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import { loadTodos, loadTodosAsync, saveTodos } from '../utils/storage';
 import { playCompleteSound } from '../utils/audioUtils';
+import { useCrossTabSync, broadcastSync } from '../hooks/useCrossTabSync';
 
 const TodoContext = createContext(null);
 
@@ -34,13 +35,51 @@ export function useTodos() {
  * TodoProvider component that manages todo state and operations.
  */
 export function TodoProvider({ children }) {
-  const [todos, setTodos] = useState(() => loadTodos());
-  const [isLoading, setIsLoading] = useState(false);
+  const [todos, setTodos] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const isSyncing = useRef(false);
+
+  // Load todos on mount
+  useEffect(() => {
+    const init = async () => {
+      try {
+        // Ensure storage is ready/migrated
+        // (If TaskContext runs first, this is fast no-op)
+        const loadedTodos = await loadTodosAsync();
+        setTodos(loadedTodos);
+      } catch (error) {
+        console.error('Error loading todos:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    init();
+  }, []);
+
+  // Handle cross-tab sync
+  const handleSync = useCallback(async (type) => {
+    if (type === 'todos') {
+      try {
+        const newTodos = await loadTodosAsync();
+        isSyncing.current = true; // Prevent echo
+        setTodos(newTodos);
+      } catch (error) {
+        console.error('Error syncing todos:', error);
+      }
+    }
+  }, []);
+
+  useCrossTabSync(handleSync);
 
   // Save todos to storage whenever they change
   useEffect(() => {
     if (!isLoading) {
+      if (isSyncing.current) {
+        isSyncing.current = false;
+        return;
+      }
       saveTodos(todos);
+      broadcastSync('TODOS_UPDATED');
     }
   }, [todos, isLoading]);
 
@@ -50,15 +89,19 @@ export function TodoProvider({ children }) {
    * @returns {Object} The new TODO
    */
   const addTodo = useCallback((todoData) => {
+    // Find max order to put new item at the end
+    const maxOrder = todos.reduce((max, t) => Math.max(max, t.order || 0), 0);
+    
     const newTodo = {
       id: Date.now(),
+      order: maxOrder + 1,
       ...todoData,
       isCompleted: false,
     };
     
     setTodos(prev => [...prev, newTodo]);
     return newTodo;
-  }, []);
+  }, [todos]);
 
   /**
    * Updates an existing TODO.
@@ -116,6 +159,36 @@ export function TodoProvider({ children }) {
     return todos.filter(todo => todo.isCompleted);
   }, [todos]);
 
+  /**
+   * Reorders todos using the active and over IDs from drag-and-drop.
+   * @param {number|string} activeId - The ID of the item being dragged
+   * @param {number|string} overId - The ID of the item it was dropped over
+   */
+  const reorderTodos = useCallback((activeId, overId) => {
+    // console.log('reorderTodos called:', { activeId, overId });
+    setTodos((prevTodos) => {
+      const oldIndex = prevTodos.findIndex((t) => t.id === activeId);
+      const newIndex = prevTodos.findIndex((t) => t.id === overId);
+      
+      if (oldIndex === -1 || newIndex === -1) {
+          // console.warn('Could not find active or over item');
+          return prevTodos;
+      }
+
+      // Create new array copy
+      const newTodos = [...prevTodos];
+      // Move element
+      const [movedItem] = newTodos.splice(oldIndex, 1);
+      newTodos.splice(newIndex, 0, movedItem);
+
+      // Re-assign order based on new index
+      return newTodos.map((t, index) => ({
+        ...t,
+        order: index
+      }));
+    });
+  }, []);
+
   const value = {
     todos,
     setTodos,
@@ -126,6 +199,7 @@ export function TodoProvider({ children }) {
     toggleTodoComplete,
     getPendingTodos,
     getCompletedTodos,
+    reorderTodos,
   };
 
   return (

@@ -57,6 +57,8 @@ import {
   exportAllData,
   importAllData,
   importICS,
+  loadAppSetting,
+  saveAppSetting,
 } from "./utils/storage"; // Utility functions for data handling
 import { playCompleteSound } from "./utils/audioUtils";
 import { isOverdue } from "./utils/dateUtils";
@@ -65,6 +67,9 @@ import { useTodos } from "./contexts/TodoContext";
 import { useApp } from "./contexts/AppContext";
 import "./App.css";
 import Footer from "./components/Footer";
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { SortableTodoItem } from './components/SortableTodoItem';
 
 function App() {
   // Use the date refresh hook to handle midnight transitions
@@ -92,6 +97,7 @@ function App() {
     updateTodo: contextUpdateTodo,
     deleteTodo: contextDeleteTodo,
     toggleTodoComplete: contextToggleTodoComplete,
+    reorderTodos,
   } = useTodos();
   
   const {
@@ -130,19 +136,30 @@ function App() {
   // MEMOIZED VALUES
   // =========================================================================
   
-  // Memoize daily tip to only change once per day
-  const dailyTip = useMemo(() => {
-    const today = getToday();
-    const tipData = JSON.parse(localStorage.getItem("dailyTipIndex")) || {};
-    if (tipData.date === today && typeof tipData.index === "number") {
-      return dailyTips[tipData.index];
-    }
-    const newIndex = Math.floor(Math.random() * dailyTips.length);
-    localStorage.setItem(
-      "dailyTipIndex",
-      JSON.stringify({ date: today, index: newIndex })
-    );
-    return dailyTips[newIndex];
+  // State for daily tip
+  const [dailyTip, setDailyTip] = useState(dailyTips[0]);
+
+  // Load/Update daily tip on day change or mount
+  useEffect(() => {
+    const loadDailyTip = async () => {
+      const today = getToday();
+      try {
+        const tipData = await loadAppSetting("dailyTipIndex", {});
+        
+        if (tipData.date === today && typeof tipData.index === "number") {
+          setDailyTip(dailyTips[tipData.index] || dailyTips[0]);
+        } else {
+          // New day, new tip
+          const newIndex = Math.floor(Math.random() * dailyTips.length);
+          const newTipData = { date: today, index: newIndex };
+          await saveAppSetting("dailyTipIndex", newTipData);
+          setDailyTip(dailyTips[newIndex]);
+        }
+      } catch (error) {
+        console.error("Error loading daily tip:", error);
+      }
+    };
+    loadDailyTip();
   }, [getToday]);
 
   // =========================================================================
@@ -180,6 +197,42 @@ function App() {
     'alt+3': () => setCurrentView('scheduler'),
     'alt+d': toggleDarkMode,
   });
+
+  // Dnd-kit sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragEnd = (event) => {
+    const { active, over } = event;
+    
+    // console.log('Drag End:', { active: active.id, over: over?.id });
+
+    if (active.id !== over?.id) {
+      // Ensure we pass the original ID types (numbers) to reorderTodos if the state uses numbers
+      // But dnd-kit uses strings often. Let's see if we need conversion back.
+      // If our state IDs are numbers, we should keep them as numbers for the context updates.
+      // However, SortableContext logic below converts them to strings for dnd-kit.
+      
+      // Let's assume reorderTodos expects the IDs as they are in the 'todos' state (likely numbers).
+      // We explicitly convert to string for dnd-kit, so active.id might be a string now? 
+      // Actually `useSortable` id prop type determines `active.id` type.
+      
+      // We will update SortableTodoItem to use String(id). So active.id will be string.
+      // We need to find the original numeric IDs to pass to reorderTodos.
+      const activeId = Number(active.id);
+      const overId = Number(over.id);
+      
+      reorderTodos(activeId, overId);
+    }
+  };
 
   // =========================================================================
   // TASK CRUD OPERATIONS (Wrapped with notifications)
@@ -518,13 +571,21 @@ function App() {
   // ===========================================================================
 
   /** Initiates the download of all tasks and TODOs as a JSON file. */
-  const handleExportTasks = () => {
-    exportAllData(tasks, todos);
-    showNotification({
-      type: "success",
-      message: "Tasks & TODOs exported successfully",
-      details: "Your data has been downloaded as a JSON file",
-    });
+  const handleExportTasks = async () => {
+    try {
+      await exportAllData();
+      showNotification({
+        type: "success",
+        message: "Tasks & TODOs exported successfully",
+        details: "Your data has been downloaded as a JSON file",
+      });
+    } catch (error) {
+      showNotification({
+        type: 'error',
+        message: 'Export failed',
+        details: 'Failed to export data from database.'
+      });
+    }
   };
 
   // unified import handler is attached directly to the input element
@@ -676,11 +737,16 @@ function App() {
                           })
                       } else if (name.endsWith('.ics')) {
                         importICS(file)
-                          .then((imported) => {
+                          .then(({ tasks: importedTasks, stats }) => {
                             const existingKeys = new Set(tasks.map(t => `${t.title}__${t.dueDate}__${t.dueTime}`))
-                            const toAdd = imported.filter(it => !existingKeys.has(`${it.title}__${it.dueDate}__${it.dueTime}`)).map(it => ({ ...it, id: Date.now() + Math.floor(Math.random()*10000) }))
+                            const toAdd = importedTasks.filter(it => !existingKeys.has(`${it.title}__${it.dueDate}__${it.dueTime}`)).map(it => ({ ...it, id: Date.now() + Math.floor(Math.random()*10000) }))
                             if (toAdd.length > 0) setTasks(prev => [...prev, ...toAdd])
-                            showNotification({ type: 'success', message: 'Calendar imported', details: `${toAdd.length} events added as tasks from ${file.name}` })
+                            
+                            const details = stats.failed > 0 
+                              ? `${toAdd.length} events added. ${stats.failed} failed/skipped.`
+                              : `${toAdd.length} events added as tasks from ${file.name}`;
+
+                            showNotification({ type: 'success', message: 'Calendar imported', details })
                           })
                           .catch((err) => {
                             showNotification({ type: 'error', message: 'ICS import failed', details: err.message })
@@ -902,126 +968,28 @@ function App() {
                   </div>
                 ) : (
                   <>
-                    <div className="space-y-3">
-                      {todos.filter(todo => !todo.isCompleted).map((todo) => (
-                      <div
-                        key={todo.id}
-                        className="bg-card/80 backdrop-blur-sm border border-border/50 rounded-lg shadow-sm p-3 transition-all duration-300 hover:scale-[1.02] hover:shadow-lg hover:bg-accent/30"
+                    <DndContext 
+                      sensors={sensors} 
+                      collisionDetection={closestCenter} 
+                      onDragEnd={handleDragEnd}
+                    >
+                      <SortableContext 
+                        items={todos.filter(todo => !todo.isCompleted).map(t => String(t.id))}
+                        strategy={verticalListSortingStrategy}
                       >
-                        <div className="flex items-center justify-between w-full gap-2">
-                          <div className="flex items-center space-x-3 flex-1 min-w-0">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                toggleTodoComplete(todo.id);
-                              }}
-                              className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-300 flex-shrink-0 ${
-                                todo.isCompleted
-                                  ? "border-[var(--accent-2)] hover:border-[var(--accent-2)]"
-                                  : "border-muted-foreground/30 hover:border-[var(--accent-2)]"
-                              }`}
-                              style={{
-                                background: todo.isCompleted
-                                  ? "var(--accent-2)"
-                                  : "transparent",
-                              }}
-                            >
-                              {todo.isCompleted && (
-                                <CheckCircle className="h-3 w-3 text-white" />
-                              )}
-                            </button>
-                            <div 
-                              className="flex-1 min-w-0 cursor-pointer"
-                              onClick={() => openTodoForm(todo)}
-                            >
-                              {(() => {
-                                const words = todo.title.trim().split(/\s+/);
-                                if (words.length > 4) {
-                                  return (
-                                    <p
-                                      className={`text-sm font-medium ${
-                                        todo.isCompleted
-                                          ? "line-through text-muted-foreground"
-                                          : ""
-                                      }`}
-                                      style={{
-                                        whiteSpace: "nowrap",
-                                        overflow: "hidden",
-                                        textOverflow: "ellipsis",
-                                        display: "block",
-                                        width: "100%",
-                                        maxWidth: "100%",
-                                      }}
-                                      title={todo.title}
-                                    >
-                                      {words.slice(0, 3).join(" ") + " ..."}
-                                    </p>
-                                  );
-                                } else {
-                                  return (
-                                    <p
-                                      className={`text-sm font-medium ${
-                                        todo.isCompleted
-                                          ? "line-through text-muted-foreground"
-                                          : ""
-                                      }`}
-                                      style={{
-                                        whiteSpace: "normal",
-                                        wordBreak: "break-word",
-                                        display: "block",
-                                        width: "100%",
-                                        maxWidth: "100%",
-                                      }}
-                                      title={todo.title}
-                                    >
-                                      {todo.title}
-                                    </p>
-                                  );
-                                }
-                              })()}
-                              {todo.description && (
-                                <p 
-                                  className="text-xs text-muted-foreground"
-                                  style={{
-                                    whiteSpace: "nowrap",
-                                    overflow: "hidden",
-                                    textOverflow: "ellipsis",
-                                  }}
-                                  title={todo.description}
-                                >
-                                  {todo.description}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2 flex-shrink-0">
-                            <Badge
-                              variant={
-                                todo.priority === "high"
-                                  ? "destructive"
-                                  : todo.priority === "medium"
-                                  ? "default"
-                                  : "secondary"
-                              }
-                              className="text-xs min-w-[60px] text-center"
-                            >
-                              {todo.priority}
-                            </Badge>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                deleteTodo(todo.id);
-                              }}
-                              className="text-muted-foreground hover:text-destructive transition-colors p-1"
-                              aria-label="Delete TODO"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </div>
+                        <div className="space-y-3">
+                          {todos.filter(todo => !todo.isCompleted).map((todo) => (
+                            <SortableTodoItem
+                              key={todo.id}
+                              todo={todo}
+                              toggleTodoComplete={toggleTodoComplete}
+                              openTodoForm={openTodoForm}
+                              deleteTodo={deleteTodo}
+                            />
+                          ))}
                         </div>
-                      </div>
-                    ))}
-                  </div>
+                      </SortableContext>
+                    </DndContext>
                   
                   {/* Collapsible completed TODOs section */}
                   {(() => {

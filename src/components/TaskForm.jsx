@@ -1,11 +1,15 @@
 import { useState, memo, useCallback } from 'react'
-import { X, Save, Calendar, Clock, AlertCircle } from 'lucide-react'
+import { X, Save, Calendar, Clock, AlertCircle, Plus, LayoutTemplate } from 'lucide-react'
 import { Button } from '@/components/ui/button.jsx'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card.jsx'
 import { Input } from '@/components/ui/input.jsx'
 import { Textarea } from '@/components/ui/textarea.jsx'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.jsx'
 import { Label } from '@/components/ui/label.jsx'
+import { SubtaskList } from './SubtaskList'
+import { useTaskTemplates } from '@/hooks/useTaskTemplates'
+import { DatePicker } from '@/components/ui/date-picker'
+import { TimePicker } from '@/components/ui/time-picker'
 
 const TaskForm = ({ task, initialDate, onSave, onCancel }) => {
   const [formData, setFormData] = useState(() => {
@@ -19,19 +23,22 @@ const TaskForm = ({ task, initialDate, onSave, onCancel }) => {
         estimatedDuration: task.estimatedDuration || 60,
         tags: task.tags || [],
         repeatUntil: task.repeatUntil || '',
-        repeatFrequency: task.repeatFrequency || 'none'
+        repeatFrequency: task.repeatFrequency || 'none',
+        subtasks: task.subtasks || []
       };
     }
     return {
       title: '',
       description: '',
+      descriptionType: 'text', // Default to text
       dueDate: initialDate || '',
       dueTime: '',
       priority: 'medium',
       estimatedDuration: 60,
       tags: [],
       repeatUntil: '',
-      repeatFrequency: 'none'
+      repeatFrequency: 'none',
+      subtasks: []
     };
   });
 
@@ -137,8 +144,98 @@ const TaskForm = ({ task, initialDate, onSave, onCancel }) => {
     setFormData(prev => ({ ...prev, tags: prev.tags.filter(t => t !== tag) }));
   };
 
+  const [subtaskInput, setSubtaskInput] = useState('');
+
+  const handleAddSubtask = () => {
+    if (!subtaskInput.trim()) return;
+    const newSubtask = {
+      id: Date.now(),
+      title: subtaskInput.trim(),
+      isCompleted: false
+    };
+    setFormData(prev => ({
+      ...prev,
+      subtasks: [...(prev.subtasks || []), newSubtask]
+    }));
+    setSubtaskInput('');
+  };
+
+  const handleUpdateSubtask = (id, updates) => {
+    setFormData(prev => ({
+      ...prev,
+      subtasks: prev.subtasks.map(st => st.id === id ? { ...st, ...updates } : st)
+    }));
+  };
+
+  const handleDeleteSubtask = (id) => {
+    setFormData(prev => ({
+      ...prev,
+      subtasks: prev.subtasks.filter(st => st.id !== id)
+    }));
+  };
+
+  const handleToggleSubtask = (id) => {
+      setFormData(prev => ({
+        ...prev,
+        subtasks: prev.subtasks.map(st => 
+          st.id === id ? { ...st, isCompleted: !st.isCompleted } : st
+        )
+      }));
+  };
+
+  const { templates, addTemplate, applyTemplate } = useTaskTemplates();
+
+  const handleApplyTemplate = (templateId) => {
+    const template = templates.find(t => t.id === templateId || t.name === templateId); // Handle ID or Name if SelectValue returns string
+    // Shadcn Select value is string. If we use IDs, we need to find by ID.
+    // If IDs are numbers, we might need parsing.
+    // Let's assume passed value is ID string.
+    
+    if (template) {
+       const defaults = applyTemplate(template);
+       setFormData(prev => ({
+         ...prev,
+         ...defaults,
+         // valid check for title to append if needed, or just replace?
+         // Plan says "returns pre-filled task data".
+         // Let's replace simple fields but maybe keep date if set?
+         // Actually, if I select "Meeting", I probably want duration, priority, tags.
+         // Title might be "Meeting: " prefix.
+         title: defaults.title || prev.title,
+         estimatedDuration: defaults.estimatedDuration || prev.estimatedDuration,
+         priority: defaults.priority || prev.priority,
+         tags: [...new Set([...prev.tags, ...(defaults.tags || [])])],
+         description: defaults.description || prev.description,
+         descriptionType: defaults.descriptionType || 'text'
+       }));
+    }
+  };
+
   const getTodayDate = () => {
     return new Date().toISOString().split('T')[0]
+  }
+
+  // Handle Description Change based on type
+  const handleDescriptionChange = (val) => {
+    if (formData.descriptionType === 'list') {
+       // Auto-bullet logic could go here if we wanted complex handling
+       // For now just raw text update
+    }
+    handleChange('description', val);
+  };
+
+  const handleKeyDownDescription = (e) => {
+    if (formData.descriptionType === 'list' && e.key === 'Enter') {
+      e.preventDefault();
+      const cursorPosition = e.target.selectionStart;
+      const currentValue = formData.description;
+      const newValue = currentValue.substring(0, cursorPosition) + '\n- ' + currentValue.substring(e.target.selectionEnd);
+      handleChange('description', newValue);
+      // We would need to set cursor position ref here ideally, but simple for now
+      setTimeout(() => {
+          e.target.selectionStart = e.target.selectionEnd = cursorPosition + 3;
+      }, 0);
+    }
   }
 
   return (
@@ -162,6 +259,33 @@ const TaskForm = ({ task, initialDate, onSave, onCancel }) => {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
+            
+            {/* Template Selector */}
+            {!task && (
+              <div className="flex gap-2 items-end mb-4 p-3 bg-muted/30 rounded-lg border border-border/50">
+                <div className="flex-1 space-y-1">
+                  <Label className="text-xs text-muted-foreground">Apply Template</Label>
+                  <Select onValueChange={(val) => {
+                     // Find template by some ID.
+                     // Since ID can be number, and Select value is string.
+                     const tmpl = templates.find(t => String(t.id) === val || t.name === val);
+                     if (tmpl) handleApplyTemplate(tmpl.id);
+                  }}>
+                    <SelectTrigger className="h-8">
+                      <SelectValue placeholder="Select a template..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {templates.map(t => (
+                        <SelectItem key={t.id || t.name} value={String(t.id || t.name)}>
+                          {t.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
+
             {/* Task title input (required) */}
             <div className="space-y-2">
               <Label htmlFor="title">Title *</Label>
@@ -177,49 +301,85 @@ const TaskForm = ({ task, initialDate, onSave, onCancel }) => {
               )}
             </div>
 
-            {/* Task description input (optional) */}
+            {/* Task description input (supports types) */}
             <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
+              <Label htmlFor="description">
+                 Description {formData.descriptionType !== 'text' ? `(${formData.descriptionType})` : ''}
+              </Label>
               <Textarea
                 id="description"
                 value={formData.description}
-                onChange={(e) => handleChange('description', e.target.value)}
-                placeholder="Enter task description (optional)"
-                rows={3}
+                onChange={(e) => handleDescriptionChange(e.target.value)}
+                onKeyDown={handleKeyDownDescription}
+                placeholder={
+                   formData.descriptionType === 'list' ? '- Item 1\n- Item 2' :
+                   formData.descriptionType === 'chunks' ? '[Section]\nContent...' :
+                   "Enter task description (optional)"
+                }
+                rows={5}
+                className={formData.descriptionType === 'chunks' ? 'font-mono text-sm' : ''}
+              />
+            </div>
+
+            {/* Subtasks Section */}
+            <div className="space-y-2">
+              <Label>Subtasks</Label>
+              <div className="flex gap-2">
+                <Input
+                  value={subtaskInput}
+                  onChange={(e) => setSubtaskInput(e.target.value)}
+                  placeholder="Add a subtask"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAddSubtask();
+                    }
+                  }}
+                />
+                <Button type="button" onClick={handleAddSubtask} size="sm" variant="outline">
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+              <SubtaskList 
+                subtasks={formData.subtasks}
+                onToggle={handleToggleSubtask}
+                onDelete={handleDeleteSubtask}
+                onUpdate={handleUpdateSubtask}
               />
             </div>
 
             {/* Due date input (required) */}
             <div className="space-y-2">
               <Label htmlFor="dueDate">Due Date *</Label>
-              <div className="relative">
-                <Input
-                  id="dueDate"
-                  type="date"
-                  value={formData.dueDate}
-                  onChange={(e) => handleChange('dueDate', e.target.value)}
-                  min={getTodayDate()}
-                  className={errors.dueDate ? 'border-red-500' : ''}
-                />
-                <Calendar className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
-              </div>
+              <DatePicker
+                date={formData.dueDate ? new Date(formData.dueDate) : undefined}
+                onSelect={(date) => {
+                  // Use local time for YYYY-MM-DD string to avoid timezone shifts
+                  // Create a date object that represents noon to avoid edge cases or just format relative to local
+                  // To output 'YYYY-MM-DD' correctly in local time:
+                  var dateStr = '';
+                  if (date) {
+                      const offset = date.getTimezoneOffset(); 
+                      const localDate = new Date(date.getTime() - (offset*60*1000));
+                      dateStr = localDate.toISOString().split('T')[0];
+                  }
+                  handleChange('dueDate', dateStr);
+                  if (errors.dueDate) setErrors({ ...errors, dueDate: null });
+                }}
+                className={errors.dueDate ? "border-red-500" : ""}
+              />
               {errors.dueDate && (
-                <p className="text-sm text-red-500">{errors.dueDate}</p>
+                <p className="text-red-500 text-xs">{errors.dueDate}</p>
               )}
             </div>
 
             {/* Due time input (optional) */}
             <div className="space-y-2">
-              <Label htmlFor="dueTime">Due Time (optional)</Label>
-              <div className="relative">
-                <Input
-                  id="dueTime"
-                  type="time"
-                  value={formData.dueTime}
-                  onChange={(e) => handleChange('dueTime', e.target.value)}
-                />
-                <Clock className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
-              </div>
+              <Label htmlFor="dueTime">Due Time</Label>
+              <TimePicker
+                 time={formData.dueTime}
+                 onSelect={(time) => handleChange('dueTime', time)}
+              />
             </div>
 
             <div className="space-y-2">
