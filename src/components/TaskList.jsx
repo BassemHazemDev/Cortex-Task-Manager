@@ -1,10 +1,12 @@
 import { formatDateTimeContext } from "@/lib/utils.js";
-import { useState, memo, useMemo, useCallback } from "react";
+import { useState, memo, useMemo, useCallback, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useDateRefresh } from "../hooks/useDateRefresh";
-import { CheckCircle, Clock, Calendar, Trash2, Filter, ListChecks, ChevronDown, ChevronUp } from "lucide-react";
+import { CheckCircle, Clock, Calendar, Trash2, Filter, ListChecks, ChevronDown, ChevronUp, Copy, CalendarPlus, Edit, MoreVertical, ChevronLeft, ChevronRight } from "lucide-react";
 import { isOverdue } from "../utils/dateUtils";
 import { playCompleteSound } from "../utils/audioUtils";
 import { getTagColorClass } from "../utils/tagUtils";
+import haptics from "../utils/haptics";
 import { Button } from "@/components/ui/button.jsx";
 import {
   Card,
@@ -20,6 +22,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select.jsx";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu.jsx";
+import { EmptyState } from "./common/EmptyState";
 
 function TagFilter({ tasks, tagFilter, setTagFilter }) {
   // Extracts all unique tags from the provided tasks array
@@ -83,11 +93,14 @@ const TaskList = ({ tasks, onTaskClick, onToggleComplete, onDeleteTask, onToggle
       timeStr
     );
   }
-  // Filter state: status, tags, sorting, and day
   const [filter, setFilter] = useState("all"); // Task status filter: all, pending, completed
   const [tagFilter, setTagFilter] = useState([]); // Selected tags for filtering
   const [sortBy, setSortBy] = useState("dueDate"); // Sorting method: dueDate, priority, title
   const [dayFilter, setDayFilter] = useState("today"); // Day filter: today, tomorrow, week, etc.
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const tasksPerPage = 20;
 
   const getFilteredTasks = () => {
     let filteredTasks = tasks;
@@ -185,6 +198,18 @@ const TaskList = ({ tasks, onTaskClick, onToggleComplete, onDeleteTask, onToggle
 
 
   const filteredTasks = getFilteredTasks();
+  
+  // Pagination logic
+  const totalPages = Math.ceil(filteredTasks.length / tasksPerPage);
+  const paginatedTasks = useMemo(() => {
+    const startIndex = (currentPage - 1) * tasksPerPage;
+    return filteredTasks.slice(startIndex, startIndex + tasksPerPage);
+  }, [filteredTasks, currentPage, tasksPerPage]);
+  
+  // Reset to first page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filter, tagFilter, sortBy, dayFilter, search]);
 
   // Renders the main task list UI with filters, search, and summary
   return (
@@ -328,26 +353,34 @@ const TaskList = ({ tasks, onTaskClick, onToggleComplete, onDeleteTask, onToggle
       <div className="space-y-3">
         {filteredTasks.length === 0 ? (
           <Card>
-            <CardContent className="py-8">
-              <div
-                className="text-center"
-                style={{ color: "var(--muted-foreground)" }}
-              >
-                <CheckCircle
-                  className="h-12 w-12 mx-auto mb-4"
-                  style={{ color: "var(--muted)" }}
+            <CardContent className="py-4">
+              {search.trim() || filter !== "all" || tagFilter.length > 0 || dayFilter !== "today" ? (
+                <EmptyState
+                  type="search"
+                  title="No tasks found"
+                  description="Try adjusting your filters or search terms"
                 />
-                <p>No tasks found</p>
-                <p className="text-sm">
-                  Try adjusting your filters or add a new task
-                </p>
-              </div>
+              ) : (
+                <EmptyState
+                  type="tasks"
+                  title="No tasks yet"
+                  description="Create your first task to start organizing your day!"
+                />
+              )}
             </CardContent>
           </Card>
         ) : (
-          filteredTasks.map((task) => (
-            <Card
+          <AnimatePresence mode="popLayout">
+          {paginatedTasks.map((task, index) => (
+            <motion.div
               key={task.id}
+              layout
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, x: -100, scale: 0.9 }}
+              transition={{ duration: 0.2, delay: index * 0.02 }}
+            >
+            <Card
               className={`cursor-pointer transition-all hover:shadow-md ${
                 task.isCompleted ? "opacity-75" : ""
               }`}
@@ -360,9 +393,11 @@ const TaskList = ({ tasks, onTaskClick, onToggleComplete, onDeleteTask, onToggle
               <CardContent className="p-4">
                 <div className="flex items-start justify-between">
                   <div className="flex items-start space-x-3 flex-1">
-                    <button
+                    <motion.button
+                      whileTap={{ scale: 0.85 }}
                       onClick={(e) => {
                         e.stopPropagation();
+                        haptics.success();
                         if (!task.isCompleted) playCompleteSound();
                         onToggleComplete(task.id);
                       }}
@@ -386,7 +421,7 @@ const TaskList = ({ tasks, onTaskClick, onToggleComplete, onDeleteTask, onToggle
                           style={{ color: "var(--success-foreground, #fff)" }}
                         />
                       )}
-                    </button>
+                    </motion.button>
 
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center space-x-2 mb-1 card-content-container">
@@ -492,7 +527,7 @@ const TaskList = ({ tasks, onTaskClick, onToggleComplete, onDeleteTask, onToggle
                     </div>
                   </div>
 
-                 <div className="flex flex-col items-center space-y-2">
+                   <div className="flex flex-col items-center space-y-2">
                     {task.subtasks && task.subtasks.length > 0 && (
                       <Button
                         variant="ghost"
@@ -511,20 +546,41 @@ const TaskList = ({ tasks, onTaskClick, onToggleComplete, onDeleteTask, onToggle
                       </Button>
                     )}
 
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onDeleteTask(task.id);
-                      }}
-                      style={{
-                        color: "var(--destructive)",
-                        background: "transparent",
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    {/* Kebab menu for task actions */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => e.stopPropagation()}
+                          className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
+                        >
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-48">
+                        <DropdownMenuItem onClick={() => onTaskClick(task)}>
+                          <Edit className="h-4 w-4 mr-2" />
+                          Edit Task
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => {
+                          haptics.success();
+                          if (!task.isCompleted) playCompleteSound();
+                          onToggleComplete(task.id);
+                        }}>
+                          <CheckCircle className="h-4 w-4 mr-2" />
+                          {task.isCompleted ? 'Mark Pending' : 'Complete'}
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem 
+                          className="text-destructive focus:text-destructive"
+                          onClick={() => onDeleteTask(task.id)}
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete Task
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </div>
 
@@ -567,20 +623,83 @@ const TaskList = ({ tasks, onTaskClick, onToggleComplete, onDeleteTask, onToggle
                 )}
               </CardContent>
             </Card>
-          ))
+            </motion.div>
+          ))}
+          </AnimatePresence>
         )}
       </div>
+
+      {/* Pagination controls */}
+      {filteredTasks.length > tasksPerPage && (
+        <Card>
+          <CardContent className="py-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">
+                Page {currentPage} of {totalPages}
+              </span>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="h-8 px-2"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let pageNum;
+                    if (totalPages <= 5) {
+                      pageNum = i + 1;
+                    } else if (currentPage <= 3) {
+                      pageNum = i + 1;
+                    } else if (currentPage >= totalPages - 2) {
+                      pageNum = totalPages - 4 + i;
+                    } else {
+                      pageNum = currentPage - 2 + i;
+                    }
+                    return (
+                      <Button
+                        key={pageNum}
+                        variant={currentPage === pageNum ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setCurrentPage(pageNum)}
+                        className="h-8 w-8 p-0"
+                      >
+                        {pageNum}
+                      </Button>
+                    );
+                  })}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="h-8 px-2"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Summary bar showing count of filtered and total tasks */}
       {filteredTasks.length > 0 && (
         <Card>
-          <CardContent className="py-4">
+          <CardContent className="py-3">
             <div
-              className="flex justify-between text-sm"
+              className="flex flex-wrap justify-between gap-2 text-sm"
               style={{ color: "var(--muted-foreground)" }}
             >
               <span>
-                Showing {filteredTasks.length} of {tasks.length} tasks
+                {filteredTasks.length > tasksPerPage 
+                  ? `Showing ${(currentPage - 1) * tasksPerPage + 1}-${Math.min(currentPage * tasksPerPage, filteredTasks.length)} of ${filteredTasks.length} tasks`
+                  : `Showing ${filteredTasks.length} of ${tasks.length} tasks`
+                }
               </span>
               <span>
                 {filteredTasks.filter((t) => !t.isCompleted).length} pending,{" "}

@@ -26,6 +26,8 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import dailyTips from "./lib/dailyTips";
 import { useDateRefresh } from "./hooks/useDateRefresh";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
+import { useOnboarding } from "./hooks/useOnboarding";
+import { useIsMobile } from "./hooks/use-mobile";
 import {
   Calendar,
   Plus,
@@ -39,6 +41,7 @@ import {
   ChevronsDownUp,
   Trash2,
   Keyboard,
+  RotateCcw,
 } from "lucide-react"; // Icon library for a clean UI
 import { Button } from "@/components/ui/button.jsx";
 import {
@@ -54,6 +57,9 @@ import SmartScheduler from "./components/SmartScheduler";
 import NotificationSystem from "./components/NotificationSystem";
 import SimpleTodoForm from "./components/SimpleTodoForm";
 import TaskForm from "./components/TaskForm";
+import OnboardingTour from "./components/OnboardingTour";
+import MobileNav from "./components/MobileNav";
+import { EmptyTodoList } from "./components/common/EmptyState";
 import {
   exportAllData,
   importAllData,
@@ -115,8 +121,11 @@ function App() {
     setCalendarExpanded,
   } = useApp();
 
-  // Detect mobile (simple check)
-  const isMobile = window.matchMedia("(max-width: 1023px)").matches;
+  // Detect mobile using the hook for reactive updates
+  const isMobile = useIsMobile();
+  
+  // Onboarding tour hook
+  const { resetTour } = useOnboarding();
   
   // =========================================================================
   // LOCAL UI STATE (Not part of contexts)
@@ -533,6 +542,7 @@ function App() {
                   variant="outline"
                   size="sm"
                   aria-label="Shortcuts"
+                  data-tour="shortcuts-btn"
                   onClick={() => setShowShortcutsModal(true)}
                   className="transition-all duration-300 hover:shadow-md active:scale-95 button"
                 >
@@ -569,6 +579,7 @@ function App() {
                   aria-label={
                     isDarkMode ? "Switch to light mode" : "Switch to dark mode"
                   }
+                  data-tour="theme-toggle"
                   onClick={toggleDarkMode}
                   className="transition-all duration-300 hover:shadow-md active:scale-95 button"
                 >
@@ -683,6 +694,7 @@ function App() {
               {/* Add Task button */}
               <Button
                 onClick={() => openTaskForm()}
+                data-tour="add-task"
                 className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg transition-all duration-300 hover:shadow-md active:scale-95 button"
                 size="lg"
               >
@@ -707,6 +719,7 @@ function App() {
             <Button
               variant={currentView === "tasks" ? "default" : "outline"}
               onClick={() => setCurrentView("tasks")}
+              data-tour="tasks-tab"
               className="flex items-center space-x-2 transition-all duration-300 hover:shadow-md active:scale-95"
             >
               <CheckCircle className="h-4 w-4" />
@@ -716,6 +729,7 @@ function App() {
           <Button
             variant={currentView === "scheduler" ? "default" : "outline"}
             onClick={() => setCurrentView("scheduler")}
+            data-tour="scheduler-tab"
             className="flex items-center space-x-2 transition-all duration-300 hover:shadow-md active:scale-95"
           >
             <Sparkles className="h-4 w-4" />
@@ -823,7 +837,7 @@ function App() {
             <Card className={`bg-card/80 backdrop-blur-sm border border-border/50 rounded-xl shadow-sm hover:scale-[1.02] hover:shadow-lg transition-all duration-300 sidebar-focus`}>
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-2" data-tour="quick-todos">
                     <CheckCircle className="h-5 w-5 text-primary" />
                     <span>Quick TODOs</span>
                   </div>
@@ -839,15 +853,7 @@ function App() {
               </CardHeader>
               <CardContent>
                 {todos.length === 0 ? (
-                  <div className="text-center py-4">
-                    <CheckCircle className="h-8 w-8 mx-auto mb-2 text-muted-foreground/50" />
-                    <p className="text-muted-foreground text-sm">
-                      No TODOs yet
-                    </p>
-                    <p className="text-muted-foreground/70 text-xs mt-1">
-                      Add quick tasks to stay organized!
-                    </p>
-                  </div>
+                  <EmptyTodoList onAddTodo={() => openTodoForm()} />
                 ) : (
                   <>
                     <DndContext 
@@ -1173,6 +1179,23 @@ function App() {
                     max="23:59"
                   />
                 </div>
+                
+                {/* Restart Tour Button */}
+                <div className="pt-4 border-t border-border">
+                  <Button
+                    variant="outline"
+                    type="button"
+                    onClick={() => {
+                      resetTour();
+                      setShowSettingsModal(false);
+                    }}
+                    className="w-full"
+                  >
+                    <RotateCcw className="h-4 w-4 mr-2" />
+                    Restart Onboarding Tour
+                  </Button>
+                </div>
+                
                 <div className="flex justify-end gap-2 mt-6">
                   <Button
                     variant="outline"
@@ -1197,8 +1220,23 @@ function App() {
           notifications={notifications}
           onDismiss={dismissNotification}
         />
+        
+        {/* Onboarding Tour for first-time users */}
+        <OnboardingTour />
+        
+        {/* Mobile Bottom Navigation */}
+        {isMobile && (
+          <MobileNav
+            currentView={currentView}
+            setCurrentView={setCurrentView}
+            onAddTask={() => openTaskForm()}
+            onOpenSettings={() => setShowSettingsModal(true)}
+          />
+        )}
       </div>
       <Footer />
+      {/* Add bottom padding on mobile for the nav bar */}
+      {isMobile && <div className="h-20" />}
     </div>
   );
 }
