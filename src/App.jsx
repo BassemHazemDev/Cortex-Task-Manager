@@ -48,19 +48,20 @@ import {
 import { Badge } from "@/components/ui/badge.jsx";
 import CalendarView from "./components/CalendarView";
 import TaskList from "./components/TaskList";
-import TaskForm from "./components/TaskForm";
 import SmartScheduler from "./components/SmartScheduler";
 import NotificationSystem from "./components/NotificationSystem";
 import SimpleTodoForm from "./components/SimpleTodoForm";
+import TaskForm from "./components/TaskForm";
 import {
-  loadTasks,
-  saveTasks,
   exportAllData,
   importAllData,
   importICS,
-  loadTodos,
-  saveTodos,
 } from "./utils/storage"; // Utility functions for data handling
+import { playCompleteSound } from "./utils/audioUtils";
+import { isOverdue } from "./utils/dateUtils";
+import { useTasks } from "./contexts/TaskContext";
+import { useTodos } from "./contexts/TodoContext";
+import { useApp } from "./contexts/AppContext";
 import "./App.css";
 import Footer from "./components/Footer";
 
@@ -68,31 +69,44 @@ function App() {
   // Use the date refresh hook to handle midnight transitions
   const { getToday, now } = useDateRefresh();
   
-  function playCompleteSound() {
-    const audio = new window.Audio("/complete.mp3");
-    audio.play();
-  }
-  // User available hours state
-  // Load available hours from localStorage or default
-  const [availableHours, setAvailableHours] = useState(() => {
-    const saved = localStorage.getItem("availableHours");
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (parsed.start && parsed.end) return parsed;
-      } catch (e) {
-        // Ignore JSON parse errors
-        console.error("Failed to parse available hours:", e);
-      }
-    }
-    return { start: "13:00", end: "22:00" };
-  });
-  // Save available hours to localStorage whenever they change
-  useEffect(() => {
-    if (availableHours && availableHours.start && availableHours.end) {
-      localStorage.setItem("availableHours", JSON.stringify(availableHours));
-    }
-  }, [availableHours]);
+  // =========================================================================
+  // CONTEXT HOOKS - Centralized state management
+  // =========================================================================
+  const {
+    tasks,
+    setTasks,
+    addTask: contextAddTask,
+    updateTask: contextUpdateTask,
+    deleteTask: contextDeleteTask,
+    toggleTaskComplete: contextToggleTaskComplete,
+    hasTimeConflict,
+    getPendingTasks,
+    getCompletedTasks,
+  } = useTasks();
+  
+  const {
+    todos,
+    setTodos,
+    addTodo: contextAddTodo,
+    updateTodo: contextUpdateTodo,
+    deleteTodo: contextDeleteTodo,
+    toggleTodoComplete: contextToggleTodoComplete,
+  } = useTodos();
+  
+  const {
+    isDarkMode,
+    toggleDarkMode,
+    notifications,
+    showNotification,
+    dismissNotification,
+    availableHours,
+    setAvailableHours,
+    showSettingsModal,
+    setShowSettingsModal,
+    calendarExpanded,
+    setCalendarExpanded,
+  } = useApp();
+
   // Daily tip logic: Save tip index in localStorage so it changes only once per day
   function getDailyTip() {
     const today = getToday(); // Use the date refresh hook for consistent date
@@ -108,110 +122,33 @@ function App() {
     );
     return dailyTips[newIndex];
   }
-  // ===========================================================================
-  // EXPAND/COLLAPSE CALENDAR STATE (DESKTOP ONLY)
-  // ===========================================================================
-  const [calendarExpanded, setCalendarExpanded] = useState(false);
+
   // Detect mobile (simple check)
   const isMobile = window.matchMedia("(max-width: 1023px)").matches;
-  // STATE MANAGEMENT
-  // ===========================================================================
-  const [tasks, setTasks] = useState([]); // Holds the master list of all tasks.
-  const [todos, setTodos] = useState([]); // Holds simple TODO items (separate from calendar tasks)
+  
+  // =========================================================================
+  // LOCAL UI STATE (Not part of contexts)
+  // =========================================================================
   const [currentView, setCurrentView] = useState("calendar"); // Manages the active view ('calendar', 'tasks', 'scheduler').
   const [selectedDate, setSelectedDate] = useState(new Date()); // Tracks the currently selected date in the calendar.
   const [showTaskForm, setShowTaskForm] = useState(false); // Controls the visibility of the add/edit task modal.
   const [showTodoForm, setShowTodoForm] = useState(false); // Controls the visibility of the add/edit TODO modal.
   const [editingTask, setEditingTask] = useState(null); // Holds the task object being edited, or null for a new task.
   const [editingTodo, setEditingTodo] = useState(null); // Holds the TODO object being edited, or null for a new TODO.
-  const [notifications, setNotifications] = useState([]); // Stores active user notifications.
-  // Settings modal state
-  const [showSettingsModal, setShowSettingsModal] = useState(false);
   
   // State for completed TODOs collapse and pagination
   const [showCompletedTodos, setShowCompletedTodos] = useState(false);
   const [completedTodosPage, setCompletedTodosPage] = useState(1);
   const completedTodosPerPage = 5;
 
-  // Manages the dark/light theme state, persisting the choice in localStorage.
-  const [isDarkMode, setIsDarkMode] = useState(() => {
-    const savedTheme = localStorage.getItem("theme");
-    if (savedTheme) return savedTheme === "dark";
-    // If no theme is saved, default to light mode.
-    return false;
-  });
-
-  // ===========================================================================
-  // EFFECTS
-  // ===========================================================================
-
-  // Toggles the 'dark' class on the root HTML element based on `isDarkMode` state.
-  useEffect(() => {
-    const root = document.documentElement;
-    if (isDarkMode) {
-      root.classList.add("dark");
-      localStorage.setItem("theme", "dark"); // Persist theme choice.
-    } else {
-      root.classList.remove("dark");
-      localStorage.setItem("theme", "light");
-    }
-  }, [isDarkMode]);
-
-  // Toggles the app's color scheme.
-  const toggleDarkMode = () => setIsDarkMode((d) => !d);
-
-  // Loads tasks from storage on initial component mount.
-  useEffect(() => {
-    const savedTasks = loadTasks();
-    setTasks(savedTasks);
-    const savedTodos = loadTodos();
-    setTodos(savedTodos);
-  }, []);
-
-  // Saves tasks to storage whenever the `tasks` array changes.
-  useEffect(() => {
-    // Avoid saving an empty array on the initial load.
-    if (tasks.length > 0) {
-      saveTasks(tasks);
-    }
-  }, [tasks]);
-
-  // Saves TODOs to storage whenever the `todos` array changes.
-  useEffect(() => {
-    saveTodos(todos);
-  }, [todos]);
-
-  // ===========================================================================
-  // CORE CRUD & TASK OPERATIONS
-  // ===========================================================================
+  // =========================================================================
+  // TASK CRUD OPERATIONS (Wrapped with notifications)
+  // =========================================================================
 
   /**
    * Adds a new task or a series of recurring tasks.
    * @param {object} taskData - The data for the new task from the form.
    */
-  // Helper to check for time conflicts
-  function hasTimeConflict(newTask, existingTasks) {
-    if (!newTask.dueDate || !newTask.dueTime || !newTask.estimatedDuration)
-      return false;
-    const newStart = new Date(`${newTask.dueDate}T${newTask.dueTime}`);
-    const newEnd = new Date(
-      newStart.getTime() + newTask.estimatedDuration * 60000
-    );
-    return existingTasks.some((task) => {
-      if (
-        task.isCompleted ||
-        task.dueDate !== newTask.dueDate ||
-        !task.dueTime ||
-        !task.estimatedDuration
-      )
-        return false;
-      const start = new Date(`${task.dueDate}T${task.dueTime}`);
-      const end = new Date(start.getTime() + task.estimatedDuration * 60000);
-      // Overlap: startA < endB && startB < endA
-      return newStart < end && start < newEnd;
-    });
-  }
-
   const addTask = (taskData) => {
     // Check for time conflict for single and repeated tasks
     if (
@@ -436,71 +373,12 @@ function App() {
   };
 
   // ===========================================================================
-  // NOTIFICATION SYSTEM
-  // ===========================================================================
-
-  /**
-   * Displays a notification to the user.
-   * @param {object} notification - The notification object with type, message, etc.
-   */
-  const showNotification = (notification) => {
-    const id = Date.now();
-    const newNotification = { ...notification, id };
-    setNotifications((prev) => [...prev, newNotification]);
-
-    // Notifications are automatically dismissed after 5 seconds.
-    setTimeout(() => {
-      dismissNotification(id);
-    }, 5000);
-  };
-
-  /**
-   * Removes a notification from the screen.
-   * @param {number} id - The ID of the notification to dismiss.
-   */
-  const dismissNotification = (id) => {
-    setNotifications((prev) => prev.filter((n) => n.id !== id));
-  };
-
-  // ===========================================================================
   // DATA SELECTORS & HELPERS
   // ===========================================================================
 
-  
-
-  /** Returns all tasks that are not completed. */
-  const getPendingTasks = () => {
-    return tasks.filter((task) => !task.isCompleted);
-  };
-
-  /** Returns all tasks that are marked as completed. */
-  const getCompletedTasks = () => {
-    return tasks.filter((task) => task.isCompleted);
-  };
-
   /** Returns tasks that are past their due date and not yet completed. */
   const getOverdueTasks = () => {
-    return tasks.filter((task) => {
-      if (task.isCompleted || !task.dueDate) return false;
-      if (!task.dueTime) {
-        // No dueTime: overdue if the day is over
-        const dayEnd = new Date(task.dueDate + "T23:59:59");
-        return now > dayEnd;
-      }
-      const start = new Date(task.dueDate + "T" + task.dueTime);
-      if (
-        !task.estimatedDuration ||
-        isNaN(task.estimatedDuration) ||
-        task.estimatedDuration <= 0
-      ) {
-        // No duration: overdue as soon as due time is met
-        return now > start;
-      } else {
-        // Has duration: overdue after duration ends
-        const end = new Date(start.getTime() + task.estimatedDuration * 60000);
-        return now > end;
-      }
-    });
+    return tasks.filter((task) => isOverdue(task, now));
   };
 
   // ===========================================================================

@@ -2,6 +2,8 @@ import { formatDateTimeContext } from "@/lib/utils.js";
 import { useState } from "react";
 import { useDateRefresh } from "../hooks/useDateRefresh";
 import { CheckCircle, Clock, Calendar, Trash2, Filter } from "lucide-react";
+import { isOverdue } from "../utils/dateUtils";
+import { playCompleteSound } from "../utils/audioUtils";
 import { Button } from "@/components/ui/button.jsx";
 import {
   Card,
@@ -57,10 +59,6 @@ const TaskList = ({ tasks, onTaskClick, onToggleComplete, onDeleteTask }) => {
   // Use the date refresh hook to handle midnight transitions
   const { getToday, getTomorrow, getDayAfterTomorrow, now } = useDateRefresh();
   
-  function playCompleteSound() {
-    const audio = new window.Audio("/complete.mp3");
-    audio.play();
-  }
   const [search, setSearch] = useState("");
   // Converts a time string (HH:mm) to 12-hour format with AM/PM for better readability
   function formatTime12(timeStr, dateStr) {
@@ -169,29 +167,7 @@ const TaskList = ({ tasks, onTaskClick, onToggleComplete, onDeleteTask }) => {
     });
   };
 
-  // Helper to check if a task is overdue (after its duration ends)
-  const isOverdue = (task) => {
-    if (!task.dueDate || task.isCompleted) return false;
-    const now = new Date();
-    if (!task.dueTime) {
-      // No dueTime: overdue if the day is over
-      const dayEnd = new Date(task.dueDate + "T23:59:59");
-      return now > dayEnd;
-    }
-    const start = new Date(task.dueDate + "T" + task.dueTime);
-    if (
-      !task.estimatedDuration ||
-      isNaN(task.estimatedDuration) ||
-      task.estimatedDuration <= 0
-    ) {
-      // No duration: overdue as soon as due time is met
-      return now > start;
-    } else {
-      // Has duration: overdue after duration ends
-      const end = new Date(start.getTime() + task.estimatedDuration * 60000);
-      return now > end;
-    }
-  };
+
 
   const filteredTasks = getFilteredTasks();
 
@@ -436,7 +412,7 @@ const TaskList = ({ tasks, onTaskClick, onToggleComplete, onDeleteTask }) => {
                           >
                             {task.priority}
                           </Badge>
-                          {isOverdue(task) && (
+                          {isOverdue(task, now) && (
                             <Badge variant="destructive" className="text-xs">Overdue</Badge>
                           )}
                         </div>

@@ -40,6 +40,7 @@ const SmartScheduler = ({ tasks, onUpdateTask, onShowNotification, availableHour
           const optimalSlots = scheduler.suggestOptimalSlots(task, 1)
           if (optimalSlots.length > 0) {
             suggestions.push({
+              id: `${task.id}-reschedule-${Date.now()}`,
               type: 'reschedule',
               task,
               reason: 'Task is overdue',
@@ -53,6 +54,7 @@ const SmartScheduler = ({ tasks, onUpdateTask, onShowNotification, availableHour
           const optimalSlots = scheduler.suggestOptimalSlots(task, 3)
           if (optimalSlots.length > 0 && optimalSlots[0].score > 80) {
             suggestions.push({
+              id: `${task.id}-optimize-${Date.now()}`,
               type: 'optimize',
               task,
               reason: 'High priority task could be better scheduled',
@@ -159,10 +161,11 @@ const SmartScheduler = ({ tasks, onUpdateTask, onShowNotification, availableHour
 
     const optimizations = [];
 
-    unscheduledTasks.forEach(task => {
+    unscheduledTasks.forEach((task, index) => {
       const suggestions = scheduler.suggestOptimalSlots(task, 1);
       if (suggestions.length > 0 && suggestions[0].score > 70) {
         optimizations.push({
+          id: `${task.id}-optimize-manual-${Date.now()}-${index}`,
           type: 'optimize',
           task,
           reason: 'Automatic schedule optimization',
@@ -171,7 +174,12 @@ const SmartScheduler = ({ tasks, onUpdateTask, onShowNotification, availableHour
       }
     });
 
-    setPendingSuggestions(prev => [...prev, ...optimizations]);
+    // Filter out any suggestions for tasks that already have a pending suggestion
+    setPendingSuggestions(prev => {
+      const existingTaskIds = new Set(prev.map(s => s.task.id));
+      const newOptimizations = optimizations.filter(o => !existingTaskIds.has(o.task.id));
+      return [...prev, ...newOptimizations];
+    });
 
     onShowNotification({
       type: 'info',
@@ -259,7 +267,7 @@ const SmartScheduler = ({ tasks, onUpdateTask, onShowNotification, availableHour
 
       {/* Pending Suggestions */}
       {pendingSuggestions.map(suggestion => (
-  <Card key={`${suggestion.task.id}-${suggestion.type}`} className="border-blue-200 bg-blue-50 dark:bg-[#1a2332] dark:border-blue-700">
+  <Card key={suggestion.id} className="border-blue-200 bg-blue-50 dark:bg-[#1a2332] dark:border-blue-700">
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               <div className="flex items-center space-x-2">

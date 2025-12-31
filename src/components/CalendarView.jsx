@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useDateRefresh } from '../hooks/useDateRefresh';
 import { ChevronLeft, ChevronRight, CheckCircle, Clock } from 'lucide-react';
+import { isOverdue, formatTime12 } from '../utils/dateUtils';
+import { playCompleteSound } from '../utils/audioUtils';
 
 // UI component mocks for demonstration; replace with your actual UI library imports in production.
 const Button = ({ children, ...props }) => <button {...props}>{children}</button>;
@@ -20,28 +22,6 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
   
   // Drag-and-drop state for dragging task
   const [draggedTaskId, setDraggedTaskId] = useState(null);
-  function playCompleteSound() {
-    const audio = new window.Audio('/complete.mp3');
-    audio.play();
-  }
-  // Helper to check if a task is overdue (after its duration ends)
-  function isOverdue(task) {
-    if (!task.dueDate || task.isCompleted) return false;
-    if (!task.dueTime) {
-      // No dueTime: overdue if the day is over
-      const dayEnd = new Date(task.dueDate + 'T23:59:59');
-      return now > dayEnd;
-    }
-    const start = new Date(task.dueDate + 'T' + task.dueTime);
-    if (!task.estimatedDuration || isNaN(task.estimatedDuration) || task.estimatedDuration <= 0) {
-      // No duration: overdue as soon as due time is met
-      return now > start;
-    } else {
-      // Has duration: overdue after duration ends
-      const end = new Date(start.getTime() + task.estimatedDuration * 60000);
-      return now > end;
-    }
-  }
   // Tracks the current theme mode (dark or light) for initial render reliability
   const [isDark, setIsDark] = useState(() => {
     if (typeof document !== 'undefined') {
@@ -164,16 +144,7 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
     });
   };
 
-  // Converts a time string (HH:mm) to 12-hour format with AM/PM for better readability
-  function formatTime12(timeStr) {
-    if (!timeStr) return '';
-    let [h, m] = timeStr.split(':').map(Number);
-    let hour = h % 12 || 12;
-    let ampm = h < 12 ? 'AM' : 'PM';
-    // Only show minutes if not zero
-    let time = m === 0 ? `${hour} ${ampm}` : `${hour}:${m.toString().padStart(2, '0')} ${ampm}`;
-    return time;
-  }
+
 
   // Get appropriate days based on view mode
   const getDaysForView = () => {
@@ -391,7 +362,7 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
                         ? 'var(--accent-foreground)'
                         : (task.isCompleted ? 'var(--success-foreground, #fff)' : 'var(--foreground)');
                       let opacity = 1;
-                      if (isOverdue(task)) {
+                      if (isOverdue(task, now)) {
                         bg = isDark ? '#7f1d1d' : '#fee2e2';
                         color = isDark ? '#fee2e2' : '#7f1d1d';
                         opacity = isDark ? 0.9 : 1;
@@ -514,7 +485,7 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
                       : 'var(--card)';
                   let color = (task.priority === 'high' || task.priority === 'medium') ? 'var(--accent-foreground)' : 'var(--foreground)';
                   let opacity = 1;
-                  if (isOverdue(task)) {
+                  if (isOverdue(task, now)) {
                     bg = isDark ? '#7f1d1d' : '#fee2e2';
                     color = isDark ? '#fee2e2' : '#7f1d1d';
                     opacity = 1;
