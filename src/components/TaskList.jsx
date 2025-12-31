@@ -2,7 +2,8 @@ import { formatDateTimeContext } from "@/lib/utils.js";
 import { useState, memo, useMemo, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useDateRefresh } from "../hooks/useDateRefresh";
-import { CheckCircle, Clock, Calendar, Trash2, Filter, ListChecks, ChevronDown, ChevronUp, Copy, CalendarPlus, Edit, MoreVertical, ChevronLeft, ChevronRight } from "lucide-react";
+import { useBulkActions } from "../hooks/useBulkActions";
+import { CheckCircle, Clock, Calendar, Trash2, Filter, ListChecks, ChevronDown, ChevronUp, Copy, CalendarPlus, Edit, MoreVertical, ChevronLeft, ChevronRight, X, CheckSquare, Square } from "lucide-react";
 import { isOverdue } from "../utils/dateUtils";
 import { playCompleteSound } from "../utils/audioUtils";
 import { getTagColorClass } from "../utils/tagUtils";
@@ -15,6 +16,7 @@ import {
   CardTitle,
 } from "@/components/ui/card.jsx";
 import { Badge } from "@/components/ui/badge.jsx";
+import { Checkbox } from "@/components/ui/checkbox.jsx";
 import {
   Select,
   SelectContent,
@@ -30,6 +32,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu.jsx";
 import { EmptyState } from "./common/EmptyState";
+import HighlightText from "./common/HighlightText";
 
 function TagFilter({ tasks, tagFilter, setTagFilter }) {
   // Extracts all unique tags from the provided tasks array
@@ -69,6 +72,42 @@ function TagFilter({ tasks, tagFilter, setTagFilter }) {
 const TaskList = ({ tasks, onTaskClick, onToggleComplete, onDeleteTask, onToggleSubtask }) => {
   // Use the date refresh hook to handle midnight transitions
   const { getToday, getTomorrow, getDayAfterTomorrow, now } = useDateRefresh();
+  
+  // Bulk actions state
+  const {
+    selectedIds,
+    isSelectMode,
+    hasSelection,
+    selectionCount,
+    toggleSelect,
+    selectAll,
+    deselectAll,
+    exitSelectMode,
+    enterSelectMode,
+    isSelected,
+  } = useBulkActions();
+
+  // Bulk action handlers
+  const handleBulkComplete = useCallback(() => {
+    haptics.success();
+    selectedIds.forEach(id => {
+      const task = tasks.find(t => t.id === id);
+      if (task && !task.isCompleted) {
+        onToggleComplete(id);
+      }
+    });
+    exitSelectMode();
+  }, [selectedIds, tasks, onToggleComplete, exitSelectMode]);
+
+  const handleBulkDelete = useCallback(() => {
+    if (window.confirm(`Delete ${selectionCount} selected task(s)?`)) {
+      haptics.medium();
+      selectedIds.forEach(id => {
+        onDeleteTask(id);
+      });
+      exitSelectMode();
+    }
+  }, [selectedIds, selectionCount, onDeleteTask, exitSelectMode]);
   
   const [expandedTasks, setExpandedTasks] = useState(new Set());
 
@@ -349,6 +388,68 @@ const TaskList = ({ tasks, onTaskClick, onToggleComplete, onDeleteTask, onToggle
         </CardHeader>
       </Card>
 
+      {/* Bulk Actions Toolbar */}
+      {isSelectMode ? (
+        <Card className="sticky top-0 z-20 border-primary/50">
+          <CardContent className="py-3">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-4">
+                <Checkbox
+                  checked={selectionCount === paginatedTasks.length && paginatedTasks.length > 0}
+                  onCheckedChange={(checked) => 
+                    checked ? selectAll(paginatedTasks.map(t => t.id)) : deselectAll()
+                  }
+                />
+                <span className="text-sm font-medium">
+                  {selectionCount} selected
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={handleBulkComplete}
+                  disabled={!hasSelection}
+                >
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Complete
+                </Button>
+                <Button 
+                  variant="destructive" 
+                  size="sm"
+                  onClick={handleBulkDelete}
+                  disabled={!hasSelection}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={exitSelectMode}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        filteredTasks.length > 0 && (
+          <div className="flex justify-end mb-2">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={enterSelectMode}
+              className="text-sm"
+            >
+              <CheckSquare className="h-4 w-4 mr-2" />
+              Select
+            </Button>
+          </div>
+        )
+      )}
+
       {/* Main task list display */}
       <div className="space-y-3">
         {filteredTasks.length === 0 ? (
@@ -393,6 +494,15 @@ const TaskList = ({ tasks, onTaskClick, onToggleComplete, onDeleteTask, onToggle
               <CardContent className="p-4">
                 <div className="flex items-start justify-between">
                   <div className="flex items-start space-x-3 flex-1">
+                    {/* Selection checkbox (only in select mode) */}
+                    {isSelectMode && (
+                      <Checkbox
+                        checked={isSelected(task.id)}
+                        onCheckedChange={() => toggleSelect(task.id)}
+                        onClick={(e) => e.stopPropagation()}
+                        className="mt-1"
+                      />
+                    )}
                     <motion.button
                       whileTap={{ scale: 0.85 }}
                       onClick={(e) => {
@@ -435,7 +545,7 @@ const TaskList = ({ tasks, onTaskClick, onToggleComplete, onDeleteTask, onToggle
                               : "var(--foreground)",
                           }}
                         >
-                          {task.title}
+                          <HighlightText text={task.title} query={search} />
                         </h3>
                         <div className="flex flex-wrap gap-1 mt-1">
                           {Array.isArray(task.tags) &&

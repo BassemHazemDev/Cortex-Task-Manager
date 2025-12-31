@@ -12,6 +12,7 @@
  */
 
 import db, { needsMigration, markMigrationComplete, saveSetting, loadSetting } from './db';
+import { pad, formatDate, formatTime } from './dateUtils';
 
 // Storage keys (Only used for migration now)
 const STORAGE_KEY = 'cortex-task-manager-tasks';
@@ -396,10 +397,6 @@ export const importICS = (file) => {
             return null;
           }
         };
-
-        const pad = (n) => n.toString().padStart(2, '0');
-        const formatDate = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-        const formatTime = (d) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
 
         for (const ev of events) {
           try {

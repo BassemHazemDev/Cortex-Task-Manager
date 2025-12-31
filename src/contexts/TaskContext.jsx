@@ -16,6 +16,7 @@ import { createContext, useContext, useState, useEffect, useCallback, useRef } f
 import { loadTasks, loadTasksAsync, saveTasks, initStorage } from '../utils/storage';
 import { playCompleteSound } from '../utils/audioUtils';
 import { useCrossTabSync, broadcastSync } from '../hooks/useCrossTabSync';
+import { pad } from '../utils/dateUtils';
 
 const TaskContext = createContext(null);
 
@@ -130,8 +131,6 @@ export function TaskProvider({ children }) {
       const repeatUntilDate = new Date(`${taskData.repeatUntil}T${taskData.dueTime || '00:00'}`);
       let i = 0;
       let conflictFound = false;
-
-      const pad = (n) => n.toString().padStart(2, '0');
 
       while (currentDate <= repeatUntilDate) {
         const candidateDate = `${currentDate.getFullYear()}-${pad(currentDate.getMonth() + 1)}-${pad(currentDate.getDate())}`;

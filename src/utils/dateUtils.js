@@ -54,13 +54,23 @@ export function formatTime12(timeStr) {
 }
 
 /**
+ * Pads a number with leading zeros.
+ * 
+ * @param {number} n - The number to pad
+ * @param {number} [width=2] - The target width
+ * @returns {string} Padded number string
+ */
+export function pad(n, width = 2) {
+    return n.toString().padStart(width, '0');
+}
+
+/**
  * Formats a Date object to YYYY-MM-DD string for consistent date handling.
  * 
  * @param {Date} date - The date to format
  * @returns {string} Date in YYYY-MM-DD format
  */
 export function formatDate(date) {
-    const pad = (n) => n.toString().padStart(2, '0');
     return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
 
@@ -71,19 +81,7 @@ export function formatDate(date) {
  * @returns {string} Time in HH:mm format
  */
 export function formatTime(date) {
-    const pad = (n) => n.toString().padStart(2, '0');
     return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
-}
-
-/**
- * Pads a number with leading zeros.
- * 
- * @param {number} n - The number to pad
- * @param {number} [width=2] - The target width
- * @returns {string} Padded number string
- */
-export function pad(n, width = 2) {
-    return n.toString().padStart(width, '0');
 }
 
 /**

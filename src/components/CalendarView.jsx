@@ -1,7 +1,7 @@
 import { useState, useEffect, memo, useMemo, useCallback } from 'react';
 import { useDateRefresh } from '../hooks/useDateRefresh';
 import { ChevronLeft, ChevronRight, CheckCircle, Clock } from 'lucide-react';
-import { isOverdue, formatTime12 } from '../utils/dateUtils';
+import { isOverdue, formatTime12, pad } from '../utils/dateUtils';
 import { playCompleteSound } from '../utils/audioUtils';
 
 // UI component mocks for demonstration; replace with your actual UI library imports in production.
@@ -79,7 +79,6 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
   const getTasksForDate = (date) => {
     if (!date) return [];
   // Converts a Date object to a local date string for accurate task filtering
-    const pad = (n) => n.toString().padStart(2, '0');
     const dateStr = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
     return tasks.filter(task => task.dueDate === dateStr);
   };

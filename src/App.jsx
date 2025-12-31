@@ -22,61 +22,38 @@
  * =============================================================================
  */
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import dailyTips from "./lib/dailyTips";
 import { useDateRefresh } from "./hooks/useDateRefresh";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { useOnboarding } from "./hooks/useOnboarding";
 import { useIsMobile } from "./hooks/use-mobile";
-import {
-  Calendar,
-  Plus,
-  CheckCircle,
-  Clock,
-  AlertCircle,
-  Sparkles,
-  Download,
-  Upload,
-  Expand,
-  ChevronsDownUp,
-  Trash2,
-  Keyboard,
-  RotateCcw,
-} from "lucide-react"; // Icon library for a clean UI
+import { RotateCcw } from "lucide-react"; // Icon library for a clean UI
 import { Button } from "@/components/ui/button.jsx";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card.jsx";
-import { Badge } from "@/components/ui/badge.jsx";
 import CalendarView from "./components/CalendarView";
 import TaskList from "./components/TaskList";
 import SmartScheduler from "./components/SmartScheduler";
+import StatisticsView from "./components/StatisticsView";
 import NotificationSystem from "./components/NotificationSystem";
 import SimpleTodoForm from "./components/SimpleTodoForm";
 import TaskForm from "./components/TaskForm";
 import OnboardingTour from "./components/OnboardingTour";
 import MobileNav from "./components/MobileNav";
-import { EmptyTodoList } from "./components/common/EmptyState";
-import {
-  exportAllData,
-  importAllData,
-  importICS,
-  loadAppSetting,
-  saveAppSetting,
-} from "./utils/storage"; // Utility functions for data handling
-import { isOverdue } from "./utils/dateUtils";
+import { loadAppSetting, saveAppSetting } from "./utils/storage"; // Utility functions for data handling
+import { isOverdue, pad } from "./utils/dateUtils";
 import { useTasks } from "./contexts/TaskContext";
 import { useTodos } from "./contexts/TodoContext";
 import { useApp } from "./contexts/AppContext";
 import "./App.css";
 import Footer from "./components/Footer";
-import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
-import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { SortableTodoItem } from './components/SortableTodoItem';
 import ShortcutsModal from './components/ShortcutsModal';
+
+// Imported Modular Components
+import Header from "./components/layout/Header";
+import NavigationTabs from "./components/layout/NavigationTabs";
+import QuickTodosCard from "./components/sidebar/QuickTodosCard";
+import OverviewCard from "./components/sidebar/OverviewCard";
+import DailyTipCard from "./components/sidebar/DailyTipCard";
 
 function App() {
   // Use the date refresh hook to handle midnight transitions
@@ -87,28 +64,21 @@ function App() {
   // =========================================================================
   const {
     tasks,
-    setTasks,
     addTask: contextAddTask,
     updateTask: contextUpdateTask,
     deleteTask: contextDeleteTask,
     toggleTaskComplete: contextToggleTaskComplete,
     toggleSubtaskComplete: contextToggleSubtaskComplete,
-    getPendingTasks,
-    getCompletedTasks,
   } = useTasks();
   
   const {
-    todos,
-    setTodos,
     addTodo: contextAddTodo,
     updateTodo: contextUpdateTodo,
     deleteTodo: contextDeleteTodo,
     toggleTodoComplete: contextToggleTodoComplete,
-    reorderTodos,
   } = useTodos();
   
   const {
-    isDarkMode,
     toggleDarkMode,
     notifications,
     showNotification,
@@ -137,12 +107,6 @@ function App() {
   const [editingTask, setEditingTask] = useState(null); // Holds the task object being edited, or null for a new task.
   const [editingTodo, setEditingTodo] = useState(null); // Holds the TODO object being edited, or null for a new TODO.
   
-  // State for completed TODOs collapse and pagination
-  const [showCompletedTodos, setShowCompletedTodos] = useState(false);
-  const [completedTodosPage, setCompletedTodosPage] = useState(1);
-  const completedTodosPerPage = 5;
-
-
   const [showShortcutsModal, setShowShortcutsModal] = useState(false);
 
   // =========================================================================
@@ -215,42 +179,6 @@ function App() {
     '?': () => setShowShortcutsModal(true),
     'shift+?': () => setShowShortcutsModal(true),
   });
-
-  // Dnd-kit sensors
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
-
-  const handleDragEnd = (event) => {
-    const { active, over } = event;
-    
-    // console.log('Drag End:', { active: active.id, over: over?.id });
-
-    if (active.id !== over?.id) {
-      // Ensure we pass the original ID types (numbers) to reorderTodos if the state uses numbers
-      // But dnd-kit uses strings often. Let's see if we need conversion back.
-      // If our state IDs are numbers, we should keep them as numbers for the context updates.
-      // However, SortableContext logic below converts them to strings for dnd-kit.
-      
-      // Let's assume reorderTodos expects the IDs as they are in the 'todos' state (likely numbers).
-      // We explicitly convert to string for dnd-kit, so active.id might be a string now? 
-      // Actually `useSortable` id prop type determines `active.id` type.
-      
-      // We will update SortableTodoItem to use String(id). So active.id will be string.
-      // We need to find the original numeric IDs to pass to reorderTodos.
-      const activeId = Number(active.id);
-      const overId = Number(over.id);
-      
-      reorderTodos(activeId, overId);
-    }
-  };
 
   // =========================================================================
   // TASK CRUD OPERATIONS (Wrapped with notifications)
@@ -368,7 +296,6 @@ function App() {
   const openTaskForm = (taskOrDate = null, options = {}) => {
     // Handle creating a new task from a date click in the calendar.
     if (options.isNew && taskOrDate instanceof Date) {
-      const pad = (n) => n.toString().padStart(2, "0");
       const dateStr = `${taskOrDate.getFullYear()}-${pad(
         taskOrDate.getMonth() + 1
       )}-${pad(taskOrDate.getDate())}`;
@@ -380,7 +307,6 @@ function App() {
     }
     // Handle creating a new task from a pre-selected date.
     if (taskOrDate instanceof Date) {
-      const pad = (n) => n.toString().padStart(2, "0");
       const dateStr = `${taskOrDate.getFullYear()}-${pad(
         taskOrDate.getMonth() + 1
       )}-${pad(taskOrDate.getDate())}`;
@@ -407,15 +333,6 @@ function App() {
   const closeTaskForm = () => {
     setEditingTask(null);
     setShowTaskForm(false);
-  };
-
-  // ===========================================================================
-  // DATA SELECTORS & HELPERS
-  // ===========================================================================
-
-  /** Returns tasks that are past their due date and not yet completed. */
-  const getOverdueTasks = () => {
-    return tasks.filter((task) => isOverdue(task, now));
   };
 
   // =========================================================================
@@ -452,58 +369,6 @@ function App() {
     });
   };
 
-  const handleDeleteTodo = (id) => {
-    const todo = contextDeleteTodo(id);
-    showNotification({
-      type: "success",
-      message: "TODO deleted",
-      details: todo ? `"${todo.title}" has been removed` : "TODO has been removed",
-    });
-  };
-
-  const handleToggleTodoComplete = (id) => {
-    const { todo, newStatus } = contextToggleTodoComplete(id);
-    if (newStatus) {
-       // Sound is played in context
-      showNotification({
-        type: "success",
-        message: "TODO completed! 🎉",
-        details: `Great job completing "${todo.title}"!`,
-      });
-    }
-  };
-
-  // ===========================================================================
-  // DATA IMPORT/EXPORT HANDLERS
-  // ===========================================================================
-
-  /** Initiates the download of all tasks and TODOs as a JSON file. */
-  const handleExportTasks = async () => {
-    try {
-      await exportAllData();
-      showNotification({
-        type: "success",
-        message: "Tasks & TODOs exported successfully",
-        details: "Your data has been downloaded as a JSON file",
-      });
-    } catch (error) {
-      showNotification({
-        type: 'error',
-        message: 'Export failed',
-        details: 'Failed to export data from database.'
-      });
-    }
-  };
-
-  // unified import handler is attached directly to the input element
-
-  /**
-   * Formats a time string (e.g., "14:30") into a 12-hour format (e.g., "2:30 PM").
-   * @param {string} timeStr - The time string in HH:mm format.
-   * @returns {string} The formatted time string.
-   */
- 
-
   // ===========================================================================
   // RENDER METHOD
   // ===========================================================================
@@ -512,255 +377,14 @@ function App() {
     <div className="min-h-screen serene-gradient">
       <div className="container mx-auto px-4 py-6 max-w-7xl">
         {/* === HEADER SECTION === */}
-        <header className="mb-8 header">
-          <div className="flex items-center justify-between w-full header-content">
-            <div className="flex items-center space-x-4 header-logo">
-              <div className="p-3 bg-primary/10 rounded-2xl backdrop-blur-sm">
-                <img
-                  src={isDarkMode ? "/cortex2.png" : "/cortex1.png"}
-                  alt="Cortex Logo"
-                  style={{
-                    width: "32px",
-                    height: "32px",
-                    objectFit: "contain",
-                  }}
-                />
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold text-foreground tracking-tight">
-                  Cortex Task Manager
-                </h1>
-                <p className="text-muted-foreground text-lg">
-                  Stay organized, stay calm ✨
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-3 header-controls">
-              {/* Settings and Dark Mode */}
-              <div className="flex items-center space-x-2 header-buttons">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  aria-label="Shortcuts"
-                  data-tour="shortcuts-btn"
-                  onClick={() => setShowShortcutsModal(true)}
-                  className="transition-all duration-300 hover:shadow-md active:scale-95 button"
-                >
-                  <Keyboard className="h-4 w-4 mr-2" />
-                  Shortcuts
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  aria-label="Settings"
-                  onClick={() => setShowSettingsModal(true)}
-                  className="transition-all duration-300 hover:shadow-md active:scale-95 button"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-4 w-4 mr-2"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <circle cx="12" cy="12" r="3" />
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09a1.65 1.65 0 00-1-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09a1.65 1.65 0 001.51-1 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06a1.65 1.65 0 001.82.33h.09a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51h.09a1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82v.09a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"
-                    />
-                  </svg>
-                  Settings
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  aria-label={
-                    isDarkMode ? "Switch to light mode" : "Switch to dark mode"
-                  }
-                  data-tour="theme-toggle"
-                  onClick={toggleDarkMode}
-                  className="transition-all duration-300 hover:shadow-md active:scale-95 button"
-                >
-                  {isDarkMode ? (
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-4 w-4 mr-2"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <circle cx="12" cy="12" r="5" />
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"
-                      />
-                    </svg>
-                  ) : (
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-4 w-4 mr-2"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M21 12.79A9 9 0 1111.21 3a7 7 0 009.79 9.79z"
-                      />
-                    </svg>
-                  )}
-                  {isDarkMode ? "Light" : "Dark"} Mode
-                </Button>
-              </div>
+        <Header 
+          onOpenShortcuts={() => setShowShortcutsModal(true)}
+          onOpenSettings={() => setShowSettingsModal(true)}
+          onAddTask={() => openTaskForm()}
+        />
 
-              {/* Export/Import group */}
-              <div className="flex items-center space-x-2 header-buttons">
-                <Button
-                  onClick={handleExportTasks}
-                  variant="outline"
-                  size="sm"
-                  className="transition-all duration-300 hover:shadow-md active:scale-95 button"
-                >
-                  <Upload className="h-4 w-4 mr-2" />
-                  Export
-                </Button>
-                <div className="relative">
-                  <input
-                    type="file"
-                    accept=".json,.ics"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0]
-                      if (!file) return
-                      const maxSize = 5 * 1024 * 1024 // 5MB
-                      if (file.size > maxSize) {
-                        showNotification({ type: 'error', message: 'File too large', details: 'Please select a file smaller than 5MB.' })
-                        e.target.value = ''
-                        return
-                      }
-                      const name = file.name.toLowerCase()
-                      if (name.endsWith('.json')) {
-                        importAllData(file)
-                          .then(({ tasks: importedTasks, todos: importedTodos }) => {
-                            setTasks(importedTasks)
-                            setTodos(importedTodos)
-                            showNotification({ type: 'success', message: 'Data imported successfully', details: `${importedTasks.length} tasks and ${importedTodos.length} TODOs loaded from ${file.name}` })
-                          })
-                          .catch((err) => {
-                            showNotification({ type: 'error', message: 'Import failed', details: err.message })
-                          })
-                      } else if (name.endsWith('.ics')) {
-                        importICS(file)
-                          .then(({ tasks: importedTasks, stats }) => {
-                            const existingKeys = new Set(tasks.map(t => `${t.title}__${t.dueDate}__${t.dueTime}`))
-                            const toAdd = importedTasks.filter(it => !existingKeys.has(`${it.title}__${it.dueDate}__${it.dueTime}`)).map(it => ({ ...it, id: Date.now() + Math.floor(Math.random()*10000) }))
-                            if (toAdd.length > 0) setTasks(prev => [...prev, ...toAdd])
-                            
-                            const details = stats.failed > 0 
-                              ? `${toAdd.length} events added. ${stats.failed} failed/skipped.`
-                              : `${toAdd.length} events added as tasks from ${file.name}`;
-
-                            showNotification({ type: 'success', message: 'Calendar imported', details })
-                          })
-                          .catch((err) => {
-                            showNotification({ type: 'error', message: 'ICS import failed', details: err.message })
-                          })
-                      } else {
-                        showNotification({ type: 'error', message: 'Unsupported file type', details: 'Please select a .json or .ics file.' })
-                      }
-                      e.target.value = ''
-                    }}
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                    id="import-file"
-                  />
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="transition-all duration-300 hover:shadow-md active:scale-95 button relative-button"
-                    asChild
-                  >
-                    <label htmlFor="import-file" className="cursor-pointer">
-                      <Download className="h-4 w-4 mr-2" />
-                      Import
-                    </label>
-                  </Button>
-                </div>
-              </div>
-              {/* Add Task button */}
-              <Button
-                onClick={() => openTaskForm()}
-                data-tour="add-task"
-                className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg transition-all duration-300 hover:shadow-md active:scale-95 button"
-                size="lg"
-              >
-                <Plus className="h-5 w-5 mr-2" />
-                Add Task
-              </Button>
-            </div>
-          </div>
-        </header>
-
-  {/* === NAVIGATION TABS & EXPAND BUTTON === */}
-  <div className="flex space-x-2 mb-8 navigation-container items-center relative">
-          <div className="flex space-x-2 navigation-inner">
-            <Button
-              variant={currentView === "calendar" ? "default" : "outline"}
-              onClick={() => setCurrentView("calendar")}
-              className="flex items-center space-x-2 transition-all duration-300 hover:shadow-md active:scale-95 calendar-button"
-            >
-              <Calendar className="h-4 w-4" />
-              <span>Calendar</span>
-            </Button>
-            <Button
-              variant={currentView === "tasks" ? "default" : "outline"}
-              onClick={() => setCurrentView("tasks")}
-              data-tour="tasks-tab"
-              className="flex items-center space-x-2 transition-all duration-300 hover:shadow-md active:scale-95"
-            >
-              <CheckCircle className="h-4 w-4" />
-              <span>Tasks</span>
-            </Button>
-          </div>
-          <Button
-            variant={currentView === "scheduler" ? "default" : "outline"}
-            onClick={() => setCurrentView("scheduler")}
-            data-tour="scheduler-tab"
-            className="flex items-center space-x-2 transition-all duration-300 hover:shadow-md active:scale-95"
-          >
-            <Sparkles className="h-4 w-4" />
-            <span>Smart Scheduler</span>
-          </Button>
-          {/* Expand/Collapse Calendar Button (Desktop only, right aligned, icon with hover text) */}
-          {!isMobile && currentView === "calendar" && (
-            <div style={{ position: "absolute", right: 0, top: 0, height: "100%", display: "flex", alignItems: "center" }}>
-              <Button
-                variant="outline"
-                size="icon"
-                className="calendar-expand-btn group transition-all duration-300"
-                onClick={() => setCalendarExpanded((v) => !v)}
-                style={{ position: "relative", width: "40px", height: "40px", display: "flex", alignItems: "center", justifyContent: "center" }}
-                aria-label={calendarExpanded ? "Collapse Calendar" : "Expand Calendar"}
-              >
-                {calendarExpanded ? (
-                  <ChevronsDownUp className="h-5 w-5" />
-                ) : (
-                  <Expand className="h-5 w-5" />
-                )}
-                <span
-                  className="calendar-expand-text group-hover:opacity-100 opacity-0 absolute right-full top-1/2 -translate-y-1/2 mr-2 bg-card px-2 py-1 rounded shadow text-xs font-medium transition-opacity duration-300"
-                  style={{ whiteSpace: "nowrap", pointerEvents: "none" }}
-                >
-                  {calendarExpanded ? "Collapse Calendar" : "Expand Calendar"}
-                </span>
-              </Button>
-            </div>
-          )}
-        </div>
+        {/* === NAVIGATION TABS & EXPAND BUTTON === */}
+        <NavigationTabs currentView={currentView} setCurrentView={setCurrentView} />
 
         {/* === MAIN CONTENT AREA === */}
         <div
@@ -799,7 +423,6 @@ function App() {
                   onToggleComplete={handleToggleTaskComplete}
                   expanded={calendarExpanded && !isMobile}
                   onTaskDrop={(taskId, newDate) => {
-                    const pad = (n) => n.toString().padStart(2, "0");
                     const dateStr = `${newDate.getFullYear()}-${pad(newDate.getMonth() + 1)}-${pad(newDate.getDate())}`;
                     handleUpdateTask(taskId, { dueDate: dateStr });
                   }}
@@ -825,6 +448,10 @@ function App() {
                 availableHours={availableHours}
               />
             )}
+
+            {currentView === "statistics" && (
+              <StatisticsView />
+            )}
           </div>
 
           {/* === SIDEBAR === */}
@@ -834,278 +461,11 @@ function App() {
               transition: "all 0.5s cubic-bezier(0.4,0,0.2,1)",
             }}
           >
-            <Card className={`bg-card/80 backdrop-blur-sm border border-border/50 rounded-xl shadow-sm hover:scale-[1.02] hover:shadow-lg transition-all duration-300 sidebar-focus`}>
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2" data-tour="quick-todos">
-                    <CheckCircle className="h-5 w-5 text-primary" />
-                    <span>Quick TODOs</span>
-                  </div>
-                  <Button
-                    onClick={() => openTodoForm()}
-                    size="sm"
-                    className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg transition-all duration-300 hover:shadow-md active:scale-95"
-                  >
-                    <Plus className="h-4 w-4 mr-1" />
-                    Add
-                  </Button>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {todos.length === 0 ? (
-                  <EmptyTodoList onAddTodo={() => openTodoForm()} />
-                ) : (
-                  <>
-                    <DndContext 
-                      sensors={sensors} 
-                      collisionDetection={closestCenter} 
-                      onDragEnd={handleDragEnd}
-                    >
-                      <SortableContext 
-                        items={todos.filter(todo => !todo.isCompleted).map(t => String(t.id))}
-                        strategy={verticalListSortingStrategy}
-                      >
-                        <div className="space-y-3">
-                          {todos.filter(todo => !todo.isCompleted).map((todo) => (
-                            <SortableTodoItem
-                              key={todo.id}
-                              todo={todo}
-                              toggleTodoComplete={handleToggleTodoComplete}
-                              openTodoForm={openTodoForm}
-                              deleteTodo={handleDeleteTodo}
-                            />
-                          ))}
-                        </div>
-                      </SortableContext>
-                    </DndContext>
-                  
-                  {/* Collapsible completed TODOs section */}
-                  {(() => {
-                    const completedTodos = todos.filter(t => t.isCompleted);
-                    const totalCompletedPages = Math.ceil(completedTodos.length / completedTodosPerPage);
-                    const paginatedCompletedTodos = completedTodos.slice(
-                      (completedTodosPage - 1) * completedTodosPerPage,
-                      completedTodosPage * completedTodosPerPage
-                    );
-                    
-                    if (completedTodos.length === 0) return null;
-                    
-                    return (
-                      <div className="mt-4">
-                        <button
-                          className="w-full bg-card/80 backdrop-blur-sm border border-border/50 rounded-lg shadow-sm p-3 transition-all duration-300 hover:scale-[1.02] hover:shadow-lg hover:bg-accent/30 flex items-center justify-between"
-                          onClick={() => setShowCompletedTodos(s => !s)}
-                          aria-expanded={showCompletedTodos}
-                        >
-                          <div className="flex items-center space-x-3">
-                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-300 border-[var(--accent-2)]`}
-                              style={{ background: "var(--accent-2)" }}
-                            >
-                              <CheckCircle className="h-3 w-3 text-white" />
-                            </div>
-                            <span className="text-sm font-medium">Completed TODOs</span>
-                          </div>
-                          <div className="flex items-center gap-2 flex-shrink-0">
-                            <Badge variant="default" className="text-xs min-w-[40px] text-center">
-                              {completedTodos.length}
-                            </Badge>
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              className={`h-5 w-5 transition-transform duration-300 ${showCompletedTodos ? 'rotate-180' : ''}`}
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                            >
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                            </svg>
-                          </div>
-                        </button>
-                        
-                        {showCompletedTodos && (
-                          <div className="mt-3 space-y-2">
-                            {paginatedCompletedTodos.map(todo => (
-                              <div 
-                                key={todo.id} 
-                                className="bg-card/80 backdrop-blur-sm border border-border/50 rounded-lg shadow-sm p-3 transition-all duration-300 hover:scale-[1.02] hover:shadow-lg hover:bg-accent/30"
-                              >
-                                <div className="flex items-center justify-between w-full gap-2">
-                                  <div className="flex items-center space-x-3 flex-1 min-w-0">
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleToggleTodoComplete(todo.id);
-                                      }}
-                                      className="w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-300 flex-shrink-0 border-[var(--accent-2)] hover:border-[var(--accent-2)] hover:scale-110 cursor-pointer"
-                                      style={{ background: "var(--accent-2)" }}
-                                      title="Click to mark as incomplete"
-                                    >
-                                      <CheckCircle className="h-3 w-3 text-white" />
-                                    </button>
-                                    <div 
-                                      className="flex-1 min-w-0 cursor-pointer"
-                                      onClick={() => openTodoForm(todo)}
-                                    >
-                                      <p
-                                        className="text-sm font-medium line-through text-muted-foreground"
-                                        style={{
-                                          wordBreak: 'break-word',
-                                          overflow: 'hidden',
-                                          textOverflow: 'ellipsis',
-                                          display: '-webkit-box',
-                                          WebkitLineClamp: 2,
-                                          WebkitBoxOrient: 'vertical'
-                                        }}
-                                        title={todo.title}
-                                      >
-                                        {todo.title}
-                                      </p>
-                                      {todo.description && (
-                                        <p 
-                                          className="text-xs text-muted-foreground mt-1"
-                                          style={{
-                                            whiteSpace: "nowrap",
-                                            overflow: "hidden",
-                                            textOverflow: "ellipsis",
-                                          }}
-                                          title={todo.description}
-                                        >
-                                          {todo.description}
-                                        </p>
-                                      )}
-                                    </div>
-                                  </div>
-                                  <div className="flex items-center gap-2 flex-shrink-0">
-                                    <Badge
-                                      variant={
-                                        todo.priority === "high"
-                                          ? "destructive"
-                                          : todo.priority === "medium"
-                                          ? "default"
-                                          : "secondary"
-                                      }
-                                      className="text-xs min-w-[60px] text-center opacity-60"
-                                    >
-                                      {todo.priority}
-                                    </Badge>
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleDeleteTodo(todo.id);
-                                      }}
-                                      className="text-muted-foreground hover:text-destructive transition-colors p-1"
-                                      aria-label="Delete TODO"
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                    </button>
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
-                            
-                            {totalCompletedPages > 1 && (
-                              <div className="flex justify-center items-center gap-3 mt-4 pt-3">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="transition-all duration-300 hover:shadow-md active:scale-95"
-                                  onClick={() => setCompletedTodosPage(p => Math.max(1, p - 1))}
-                                  disabled={completedTodosPage === 1}
-                                >
-                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                                  </svg>
-                                  Prev
-                                </Button>
-                                <span className="text-xs font-medium px-3 py-1 rounded bg-muted text-muted-foreground">
-                                  {completedTodosPage} / {totalCompletedPages}
-                                </span>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="transition-all duration-300 hover:shadow-md active:scale-95"
-                                  onClick={() => setCompletedTodosPage(p => Math.min(totalCompletedPages, p + 1))}
-                                  disabled={completedTodosPage === totalCompletedPages}
-                                >
-                                  Next
-                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                  </svg>
-                                </Button>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })()}
-                  </>
-                )}
-              </CardContent>
-            </Card>
+            <QuickTodosCard onOpenTodoForm={openTodoForm} />
 
-            <Card className={`bg-card/80 backdrop-blur-sm border border-border/50 rounded-xl shadow-sm hover:scale-[1.02] hover:shadow-lg transition-all duration-300 sidebar-overview`}>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <AlertCircle className="h-5 w-5 text-primary" />
-                  <span>Overview</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">
-                      Pending Tasks
-                    </span>
-                    <Badge variant="outline" className="font-semibold">
-                      {getPendingTasks().length}
-                    </Badge>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">
-                      Completed Tasks
-                    </span>
-                    <Badge variant="outline" className="font-semibold">
-                      {getCompletedTasks().length}
-                    </Badge>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">
-                      Overdue Tasks
-                    </span>
-                    <Badge
-                      variant={
-                        getOverdueTasks().length > 0 ? "destructive" : "outline"
-                      }
-                      className="font-semibold"
-                    >
-                      {getOverdueTasks().length}
-                    </Badge>
-                  </div>
-                  <div className="pt-2 border-t border-border/50">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm font-medium">Total Tasks</span>
-                      <Badge variant="default" className="font-semibold">
-                        {tasks.length}
-                      </Badge>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <OverviewCard />
 
-            <Card className={`bg-accent/20 border-accent/30 backdrop-blur-sm rounded-xl shadow-sm hover:scale-[1.02] hover:shadow-lg transition-all duration-300 sidebar-tip`}>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2 text-accent-foreground">
-                  <Sparkles className="h-5 w-5" />
-                  <span>Daily Tip</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-accent-foreground/80 leading-relaxed">
-                  {dailyTip}
-                </p>
-              </CardContent>
-            </Card>
+            <DailyTipCard dailyTip={dailyTip} />
           </div>
         </div>
 

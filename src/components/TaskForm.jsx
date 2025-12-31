@@ -12,6 +12,7 @@ import { DatePicker } from '@/components/ui/date-picker'
 import { TimePicker } from '@/components/ui/time-picker'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import { getTagColorClass } from '@/utils/tagUtils'
+import { pad } from '@/utils/dateUtils'
 
 const TaskForm = ({ task, initialDate, onSave, onCancel }) => {
   const [formData, setFormData] = useState(() => {
@@ -83,7 +84,6 @@ const TaskForm = ({ task, initialDate, onSave, onCancel }) => {
       if (dueDate) {
         // Ensure dueDate is in YYYY-MM-DD format
         const d = new Date(`${dueDate}${dueTime ? `T${dueTime}` : ''}`);
-        const pad = (n) => n.toString().padStart(2, '0');
         dueDate = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
         if (dueTime) {
           dueTime = `${pad(d.getHours())}:${pad(d.getMinutes())}`;

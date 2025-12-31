@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import path from 'path'
 import { fileURLToPath } from 'url'
+import { visualizer } from 'rollup-plugin-visualizer'
 
 // Define __dirname for ESM (needed for some tooling and eslint)
 const __filename = fileURLToPath(import.meta.url)
@@ -10,7 +11,17 @@ const __dirname = path.dirname(__filename)
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(),tailwindcss()],
+  plugins: [
+    react(),
+    tailwindcss(),
+    // Bundle analyzer - generates stats.html in dist folder after build
+    visualizer({
+      filename: 'dist/stats.html',
+      open: false, // Set to true to auto-open after build
+      gzipSize: true,
+      brotliSize: true,
+    }),
+  ],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
