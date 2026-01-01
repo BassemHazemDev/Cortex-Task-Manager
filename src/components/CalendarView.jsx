@@ -189,7 +189,7 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
   };
 
   return (
-    <div className="space-y-6 p-4" style={{ background: 'var(--card)', color: 'var(--card-foreground)', minHeight: '100vh', maxWidth: '100%', overflow: 'hidden' }}>
+    <div className="space-y-6 p-0 md:p-4 min-h-screen w-full overflow-hidden bg-transparent md:bg-card text-card-foreground rounded-2xl">
   {/* Main calendar grid displaying the current view and navigation controls */}
       <Card style={{ background: 'var(--background)', color: 'var(--foreground)', maxWidth: '100%' }} className="rounded-xl shadow-md">
         <CardHeader className="p-4 border-b">

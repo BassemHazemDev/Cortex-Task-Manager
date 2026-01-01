@@ -1,17 +1,17 @@
-/* Global overflow prevention to avoid horizontal scroll */
 html, body {
+  background-color: var(--background);
   overflow-x: hidden;
-  max-width: 100vw;
+  max-width: 100%;
   margin: 0;
   padding: 0;
 }
 
+/* Global base styles */
 #root {
   overflow-x: hidden;
-  max-width: 100vw;
+  max-width: 100%;
 }
 
-/* Ensure all direct children also respect max width */
 * {
   box-sizing: border-box;
 }

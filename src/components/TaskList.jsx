@@ -3,7 +3,7 @@ import { useState, memo, useMemo, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useDateRefresh } from "../hooks/useDateRefresh";
 import { useBulkActions } from "../hooks/useBulkActions";
-import { CheckCircle, Clock, Calendar, Trash2, Filter, ListChecks, ChevronDown, ChevronUp, Copy, CalendarPlus, Edit, MoreVertical, ChevronLeft, ChevronRight, X, CheckSquare, Square } from "lucide-react";
+import { CheckCircle, Clock, Calendar, Trash2, Filter, ListChecks, ChevronDown, ChevronUp, Copy, CalendarPlus, Edit, MoreVertical, ChevronLeft, ChevronRight, X, CheckSquare, Square, Check } from "lucide-react";
 import { isOverdue } from "../utils/dateUtils";
 import { playCompleteSound } from "../utils/audioUtils";
 import { getTagColorClass } from "../utils/tagUtils";
@@ -17,13 +17,7 @@ import {
 } from "@/components/ui/card.jsx";
 import { Badge } from "@/components/ui/badge.jsx";
 import { Checkbox } from "@/components/ui/checkbox.jsx";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select.jsx";
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,6 +27,38 @@ import {
 } from "@/components/ui/dropdown-menu.jsx";
 import { EmptyState } from "./common/EmptyState";
 import HighlightText from "./common/HighlightText";
+
+const FilterDropdown = ({ value, onChange, options, placeholder, width = "w-32" }) => {
+  const selectedOption = options.find((opt) => opt.value === value);
+  const label = selectedOption ? selectedOption.label : placeholder;
+
+  return (
+    <DropdownMenu modal={false}>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="outline"
+          className={`justify-between ${width} font-normal px-3 bg-background`}
+          role="combobox"
+        >
+          <span className="truncate">{label}</span>
+          <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className={width}>
+        {options.map((option) => (
+          <DropdownMenuItem
+            key={option.value}
+            onSelect={() => onChange(option.value)}
+            className="flex items-center justify-between cursor-pointer"
+          >
+            <span className="truncate">{option.label}</span>
+            {value === option.value && <Check className="ml-auto h-4 w-4 opacity-100" />}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+};
 
 function TagFilter({ tasks, tagFilter, setTagFilter }) {
   // Extracts all unique tags from the provided tasks array
@@ -267,102 +293,57 @@ const TaskList = ({ tasks, onTaskClick, onToggleComplete, onDeleteTask, onToggle
             <div className="flex space-x-2 task-container-1">
               <div className="flex flex-col w-full gap-2 task-container-1">
                 <div className="flex space-x-2 mb-2 task-container-1">
-                  <div className="flex space-x-2 mb-2 task-container-2">
-                    <Select value={filter} onValueChange={setFilter}>
-                      <SelectTrigger className="w-32">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="select-item">
-                        <SelectItem value="all" className="select-item">
-                          All Statuses
-                        </SelectItem>
-                        <SelectItem value="pending" className="select-item">
-                          Pending
-                        </SelectItem>
-                        <SelectItem value="completed" className="select-item">
-                          Completed
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Select value={dayFilter} onValueChange={setDayFilter}>
-                      <SelectTrigger className="w-32">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="select-item">
-                        <SelectItem value="all" className="select-item">
-                          All Dates
-                        </SelectItem>
-                        <SelectItem value="today" className="select-item">
-                          Today
-                        </SelectItem>
-                        <SelectItem value="tomorrow" className="select-item">
-                          Tomorrow
-                        </SelectItem>
-                        <SelectItem
-                          value="dayAfterTomorrow"
-                          className="select-item"
-                        >
-                          Day After Tomorrow
-                        </SelectItem>
-                        <SelectItem value="thisWeek" className="select-item">
-                          This Week
-                        </SelectItem>
-                        <SelectItem value="thisMonth" className="select-item">
-                          This Month
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                    <div className="flex space-x-2 mb-2 task-container-2">
+                      <FilterDropdown
+                        value={filter}
+                        onChange={setFilter}
+                        width="w-32"
+                        options={[
+                          { value: "all", label: "All Statuses" },
+                          { value: "pending", label: "Pending" },
+                          { value: "completed", label: "Completed" },
+                        ]}
+                      />
+                      <FilterDropdown
+                        value={dayFilter}
+                        onChange={setDayFilter}
+                        width="w-32"
+                        options={[
+                          { value: "all", label: "All Dates" },
+                          { value: "today", label: "Today" },
+                          { value: "tomorrow", label: "Tomorrow" },
+                          { value: "dayAfterTomorrow", label: "Day After Tomorrow" },
+                          { value: "thisWeek", label: "This Week" },
+                          { value: "thisMonth", label: "This Month" },
+                        ]}
+                      />
+                    </div>
 
-                  <div className="flex space-x-2 mb-2 task-container-2">
-                    {/* Tag filter dropdown */}
-                    <Select
-                      value={tagFilter[0] || "all"}
-                      onValueChange={(tag) =>
-                        setTagFilter(tag === "all" ? [] : [tag])
-                      }
-                    >
-                      <SelectTrigger className="w-32">
-                        <SelectValue>{tagFilter[0] || "All Tags"}</SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all" className="select-item">
-                          All Tags
-                        </SelectItem>
-                        {Array.from(
-                          new Set(
-                            tasks.flatMap((task) =>
-                              Array.isArray(task.tags) ? task.tags : []
-                            )
-                          )
-                        ).map((tag) => (
-                          <SelectItem
-                            key={tag}
-                            value={tag}
-                            className="select-item"
-                          >
-                            {tag}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Select value={sortBy} onValueChange={setSortBy}>
-                      <SelectTrigger className="w-32">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="select-item">
-                        <SelectItem value="dueDate" className="select-item">
-                          Due Date
-                        </SelectItem>
-                        <SelectItem value="priority" className="select-item">
-                          Priority
-                        </SelectItem>
-                        <SelectItem value="title" className="select-item">
-                          Title
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                    <div className="flex space-x-2 mb-2 task-container-2">
+                      <FilterDropdown
+                        value={tagFilter[0] || "all"}
+                        onChange={(tag) => setTagFilter(tag === "all" ? [] : [tag])}
+                        width="w-32"
+                        placeholder="All Tags"
+                        options={[
+                          { value: "all", label: "All Tags" },
+                          ...Array.from(new Set(tasks.flatMap(t => Array.isArray(t.tags) ? t.tags : []))).map(tag => ({
+                            value: tag,
+                            label: tag
+                          }))
+                        ]}
+                      />
+                      <FilterDropdown
+                        value={sortBy}
+                        onChange={setSortBy}
+                        width="w-32"
+                        options={[
+                          { value: "dueDate", label: "Due Date" },
+                          { value: "priority", label: "Priority" },
+                          { value: "title", label: "Title" },
+                        ]}
+                      />
+                    </div>
                 </div>
                 <div className="flex justify-center w-full task-container-search">
                   <input

@@ -117,17 +117,17 @@ const Header = ({
 
   if (isMobile) {
     return (
-      <header className="mb-6 sticky top-0 z-40 bg-background/80 backdrop-blur-md border-b pb-4 pt-2 -mx-4 px-4">
+      <header className="mb-4 sticky top-0 z-40 bg-background/80 backdrop-blur-md border-b pb-3 pt-2 -mx-4 px-4">
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-             <div className="p-2 bg-primary/10 rounded-xl">
+          <div className="flex items-center space-x-2">
+             <div className="p-1.5 bg-primary/10 rounded-xl">
                 <img
                   src={isDarkMode ? "/cortex2.png" : "/cortex1.png"}
                   alt="Cortex"
-                  className="w-6 h-6 object-contain"
+                  className="w-5 h-5 object-contain"
                 />
              </div>
-             <h1 className="text-xl font-bold tracking-tight">Cortex</h1>
+             <h1 className="text-lg font-bold tracking-tight">Cortex</h1>
           </div>
           
           <div className="flex items-center space-x-4">
