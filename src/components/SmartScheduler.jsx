@@ -26,7 +26,7 @@ const SmartScheduler = ({ tasks, onUpdateTask, onShowNotification, availableHour
   // Check for tasks that need rescheduling
   useEffect(() => {
     const checkForRescheduling = () => {
-      const suggestions = []
+      const newAutoSuggestions = []
 
       tasks.forEach(task => {
         if (task.isCompleted || !task.dueDate) return
@@ -39,7 +39,7 @@ const SmartScheduler = ({ tasks, onUpdateTask, onShowNotification, availableHour
         if (isOverdue && !task.assignedSlot) {
           const optimalSlots = scheduler.suggestOptimalSlots(task, 1)
           if (optimalSlots.length > 0) {
-            suggestions.push({
+            newAutoSuggestions.push({
               id: `${task.id}-reschedule-${Date.now()}`,
               type: 'reschedule',
               task,
@@ -53,7 +53,7 @@ const SmartScheduler = ({ tasks, onUpdateTask, onShowNotification, availableHour
         if (isDueSoon && !task.assignedSlot && task.priority === 'high') {
           const optimalSlots = scheduler.suggestOptimalSlots(task, 3)
           if (optimalSlots.length > 0 && optimalSlots[0].score > 80) {
-            suggestions.push({
+            newAutoSuggestions.push({
               id: `${task.id}-optimize-${Date.now()}`,
               type: 'optimize',
               task,
@@ -64,7 +64,21 @@ const SmartScheduler = ({ tasks, onUpdateTask, onShowNotification, availableHour
         }
       })
 
-      setPendingSuggestions(suggestions)
+      // Merge: keep existing manual suggestions, update auto suggestions
+      setPendingSuggestions(prev => {
+        // Keep suggestions added via "Optimize Schedule" button that are still valid
+        const manualSuggestions = prev.filter(s => {
+          // Keep if it's a manual optimization and the task still exists and is not completed
+          const taskStillExists = tasks.find(t => t.id === s.task.id && !t.isCompleted && !t.assignedSlot)
+          return s.id.includes('-optimize-manual-') && taskStillExists
+        })
+        
+        // Filter out auto suggestions for tasks that already have manual suggestions
+        const manualTaskIds = new Set(manualSuggestions.map(s => s.task.id))
+        const filteredAutoSuggestions = newAutoSuggestions.filter(s => !manualTaskIds.has(s.task.id))
+        
+        return [...manualSuggestions, ...filteredAutoSuggestions]
+      })
     }
 
     checkForRescheduling()
@@ -225,17 +239,19 @@ const SmartScheduler = ({ tasks, onUpdateTask, onShowNotification, availableHour
   return (
     <div className="space-y-4">
       {/* Smart Scheduling Controls */}
-      <Card>
+      <Card className="border-primary/20 bg-gradient-to-br from-primary/5 via-transparent to-accent/5">
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
-            <Lightbulb className="h-5 w-5 text-yellow-600" />
+            <div className="p-2 rounded-lg bg-primary/10">
+              <Lightbulb className="h-5 w-5 text-primary" />
+            </div>
             <span>Smart Scheduling</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-between optimize-container">
             <div>
-              <p className="text-sm text-gray-600 mb-2">
+              <p className="text-sm text-muted-foreground mb-2">
                 Let AI optimize your schedule for better productivity
               </p>
               <div className="flex space-x-4 text-sm">
@@ -252,7 +268,7 @@ const SmartScheduler = ({ tasks, onUpdateTask, onShowNotification, availableHour
             <Button
               onClick={handleOptimizeSchedule}
               disabled={autoRescheduling}
-              className="bg-yellow-600 hover:bg-yellow-700 text-white"
+              className="bg-primary hover:bg-primary/90 text-primary-foreground"
             >
               {autoRescheduling ? (
                 <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
@@ -267,12 +283,14 @@ const SmartScheduler = ({ tasks, onUpdateTask, onShowNotification, availableHour
 
       {/* Pending Suggestions */}
       {pendingSuggestions.map(suggestion => (
-  <Card key={suggestion.id} className="border-blue-200 bg-blue-50 dark:bg-[#1a2332] dark:border-blue-700">
+        <Card key={suggestion.id} className="border-primary/30 bg-gradient-to-br from-primary/5 to-transparent">
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
-                <Clock className="h-5 w-5 text-blue-600 dark:text-blue-300" />
-                <span className="text-blue-800 dark:text-blue-100">
+                <div className="p-1.5 rounded-lg bg-primary/10">
+                  <Clock className="h-4 w-4 text-primary" />
+                </div>
+                <span className="text-foreground">
                   {suggestion.type === 'reschedule' ? 'Reschedule Suggestion' : 'Optimization Suggestion'}
                 </span>
               </div>
@@ -283,25 +301,25 @@ const SmartScheduler = ({ tasks, onUpdateTask, onShowNotification, availableHour
           </CardHeader>
           <CardContent>
             <div className="mb-4">
-              <h4 className="font-medium text-blue-900 dark:text-blue-100 truncate" title={suggestion.task.title}>{suggestion.task.title}</h4>
-              <p className="text-sm text-blue-700 dark:text-blue-200">{suggestion.reason}</p>
+              <h4 className="font-medium text-foreground truncate" title={suggestion.task.title}>{suggestion.task.title}</h4>
+              <p className="text-sm text-muted-foreground">{suggestion.reason}</p>
             </div>
 
             <div className="space-y-2 mb-4">
               {suggestion.suggestions.slice(0, 3).map((slot, index) => (
                 <div
                   key={index}
-                  className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded border dark:border-blue-700"
+                  className="flex items-center justify-between p-3 bg-card rounded-lg border border-border/50"
                 >
                   <div className="flex items-center space-x-3">
-                    <Badge variant="outline" className="text-blue-600">
+                    <Badge variant="outline" className="text-primary border-primary/30">
                       Score: {slot.score}
                     </Badge>
                     <div>
-                      <p className="font-medium dark:text-blue-100">
+                      <p className="font-medium text-foreground">
                         {scheduler.formatSlotDescription(slot)}
                       </p>
-                      <p className="text-sm text-gray-600 dark:text-gray-300">
+                      <p className="text-sm text-muted-foreground">
                         {Math.floor(slot.duration / 60)}h {slot.duration % 60}m available
                       </p>
                     </div>
@@ -309,7 +327,7 @@ const SmartScheduler = ({ tasks, onUpdateTask, onShowNotification, availableHour
                   <Button
                     size="sm"
                     onClick={() => handleAcceptSuggestion(suggestion.task.id, slot)}
-                    className="bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-700 dark:hover:bg-blue-800 dark:text-blue-100"
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground"
                   >
                     Accept
                   </Button>
@@ -323,6 +341,7 @@ const SmartScheduler = ({ tasks, onUpdateTask, onShowNotification, availableHour
                 variant="ghost"
                 size="sm"
                 onClick={() => handleDismissSuggestion(suggestion.task.id)}
+                className="text-muted-foreground hover:text-foreground"
               >
                 Dismiss
               </Button>
@@ -333,15 +352,17 @@ const SmartScheduler = ({ tasks, onUpdateTask, onShowNotification, availableHour
 
       {/* Quick Actions for Overdue Tasks */}
       {overdueTasks.length > 0 && (
-  <Card className="border-red-200 bg-red-50 dark:bg-[#2a1a1a] dark:border-red-700">
+        <Card className="border-destructive/30 bg-gradient-to-br from-destructive/5 to-transparent">
           <CardHeader>
-            <CardTitle className="flex items-center space-x-2 text-red-800 dark:text-red-200">
-              <Calendar className="h-5 w-5 dark:text-red-300" />
+            <CardTitle className="flex items-center space-x-2">
+              <div className="p-2 rounded-lg bg-destructive/10">
+                <Calendar className="h-5 w-5 text-destructive" />
+              </div>
               <span>Overdue Tasks</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-red-700 dark:text-red-200 mb-3">
+            <p className="text-sm text-muted-foreground mb-3">
               You have {overdueTasks.length} overdue task{overdueTasks.length > 1 ? 's' : ''}. 
               Would you like to reschedule them?
             </p>
@@ -350,34 +371,36 @@ const SmartScheduler = ({ tasks, onUpdateTask, onShowNotification, availableHour
                 <div key={task.id}>
                   {/* If suggestions are open for this task, show them */}
                   {rescheduleSuggestions[task.id] ? (
-                    <Card className="border-blue-200 bg-blue-50 dark:bg-[#1a2332] dark:border-blue-700 mb-2">
-                      <CardHeader>
-                        <CardTitle className="flex items-center space-x-2">
-                          <Clock className="h-5 w-5 text-blue-600 dark:text-blue-300" />
-                          <span className="text-blue-800 dark:text-blue-100">Reschedule Suggestions</span>
+                    <Card className="border-primary/30 bg-gradient-to-br from-primary/5 to-transparent mb-2">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="flex items-center space-x-2 text-base">
+                          <div className="p-1.5 rounded-lg bg-primary/10">
+                            <Clock className="h-4 w-4 text-primary" />
+                          </div>
+                          <span>Reschedule Suggestions</span>
                         </CardTitle>
                       </CardHeader>
                       <CardContent>
                         <div className="mb-2">
-                          <h4 className="font-medium text-blue-900 dark:text-blue-100 truncate" title={task.title}>{task.title}</h4>
-                          <p className="text-sm text-blue-700 dark:text-blue-200">Choose a new time slot for this task:</p>
+                          <h4 className="font-medium text-foreground truncate" title={task.title}>{task.title}</h4>
+                          <p className="text-sm text-muted-foreground">Choose a new time slot for this task:</p>
                         </div>
                         <div className="space-y-2 mb-4">
                           {rescheduleSuggestions[task.id].map((slot, idx) => (
-                            <div key={idx} className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded border dark:border-blue-700">
+                            <div key={idx} className="flex items-center justify-between p-3 bg-card rounded-lg border border-border/50">
                               <div className="flex items-center space-x-3">
-                                <Badge variant="outline" className="text-blue-600 dark:text-blue-200">
+                                <Badge variant="outline" className="text-primary border-primary/30">
                                   Score: {slot.score}
                                 </Badge>
                                 <div>
-                                  <p className="font-medium dark:text-blue-100">{scheduler.formatSlotDescription(slot)}</p>
-                                  <p className="text-sm text-gray-600 dark:text-gray-300">{Math.floor(slot.duration / 60)}h {slot.duration % 60}m available</p>
+                                  <p className="font-medium text-foreground">{scheduler.formatSlotDescription(slot)}</p>
+                                  <p className="text-sm text-muted-foreground">{Math.floor(slot.duration / 60)}h {slot.duration % 60}m available</p>
                                 </div>
                               </div>
                               <Button
                                 size="sm"
                                 onClick={() => handleAcceptRescheduleSuggestion(task.id, slot)}
-                                className="bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-700 dark:hover:bg-blue-800 dark:text-blue-100"
+                                className="bg-primary hover:bg-primary/90 text-primary-foreground"
                               >
                                 Choose
                               </Button>
@@ -389,7 +412,7 @@ const SmartScheduler = ({ tasks, onUpdateTask, onShowNotification, availableHour
                             variant="ghost"
                             size="sm"
                             onClick={() => handleDismissRescheduleSuggestions(task.id)}
-                            className="dark:text-blue-200"
+                            className="text-muted-foreground hover:text-foreground"
                           >
                             Dismiss
                           </Button>
@@ -397,10 +420,10 @@ const SmartScheduler = ({ tasks, onUpdateTask, onShowNotification, availableHour
                       </CardContent>
                     </Card>
                   ) : (
-                    <div className="flex items-center justify-between p-2 bg-white dark:bg-gray-800 rounded border">
+                    <div className="flex items-center justify-between p-3 bg-card rounded-lg border border-border/50">
                       <div>
-                        <p className="font-medium dark:text-red-100 truncate" title={task.title}>{task.title}</p>
-                        <p className="text-sm text-gray-600 dark:text-gray-300">
+                        <p className="font-medium text-foreground truncate" title={task.title}>{task.title}</p>
+                        <p className="text-sm text-muted-foreground">
                           Due: {(() => {
                             const dateObj = new Date(task.dueDate + (task.dueTime ? `T${task.dueTime}` : ''));
                             const dateStr = dateObj.toLocaleDateString();
@@ -417,7 +440,7 @@ const SmartScheduler = ({ tasks, onUpdateTask, onShowNotification, availableHour
                         variant="outline"
                         onClick={() => handleShowRescheduleSuggestions(task.id)}
                         disabled={autoRescheduling}
-                        className="text-red-600 dark:text-red-200 border-red-300 hover:bg-red-100 dark:hover:bg-red-800"
+                        className="text-destructive border-destructive/30 hover:bg-destructive/10"
                       >
                         Reschedule
                       </Button>

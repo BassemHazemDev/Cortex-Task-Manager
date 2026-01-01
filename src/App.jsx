@@ -279,6 +279,17 @@ function App() {
       setViewingItem(null);
       setViewingType(null);
   }
+  
+  // Directly open edit form (bypasses view modal) - used by kebab menu
+  const editTaskDirectly = (task) => {
+    setEditingTask(task);
+    setShowTaskForm(true);
+  };
+  
+  const editTodoDirectly = (todo) => {
+    setEditingTodo(todo);
+    setShowTodoForm(true);
+  };
 
   // =========================================================================
   // TODO HANDLERS
@@ -369,6 +380,7 @@ function App() {
               <TaskList
                 tasks={tasks}
                 onTaskClick={openTaskForm}
+                onEditTask={editTaskDirectly}
                 onToggleComplete={handleToggleTaskComplete}
                 onDeleteTask={handleDeleteTask}
                 onToggleSubtask={handleToggleSubtaskComplete}
@@ -390,7 +402,7 @@ function App() {
           <div className={`sidebar-area ${calendarExpanded && !isMobile ? "sidebar-below flex-row flex-wrap gap-8 px-[0.5rem] py-[1rem]" : "space-y-6"}`}
             style={{ transition: "all 0.5s cubic-bezier(0.4,0,0.2,1)" }}
           >
-            <QuickTodosCard onOpenTodoForm={openTodoForm} />
+            <QuickTodosCard onOpenTodoForm={openTodoForm} onEditTodo={editTodoDirectly} />
             <OverviewCard />
             <DailyTipCard dailyTip={dailyTip} />
           </div>
@@ -449,7 +461,12 @@ function App() {
                 </div>
                 
                 <div className="pt-4 border-t border-border">
-                  <Button variant="outline" type="button" onClick={() => { resetTour(); setShowSettingsModal(false); }} className="w-full">
+                  <Button variant="outline" type="button" onClick={async () => { 
+                    await resetTour(); 
+                    setShowSettingsModal(false); 
+                    // Reload the page to ensure tour state is synced
+                    window.location.reload();
+                  }} className="w-full">
                     <RotateCcw className="h-4 w-4 mr-2" /> Restart Onboarding Tour
                   </Button>
                 </div>

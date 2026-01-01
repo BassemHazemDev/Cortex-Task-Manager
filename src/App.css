@@ -318,10 +318,22 @@
   * {
     @apply border-border outline-ring/50;
   }
+  
+  /* Prevent layout shift when scrollbar appears/disappears (e.g., when modals open) */
+  html {
+    scrollbar-gutter: stable;
+  }
+  
   /* Set body defaults: background, text color, and font. */
   body {
     @apply bg-background text-foreground font-sans;
     font-feature-settings: "rlig" 1, "calt" 1; /* Enable common font ligatures. */
+  }
+  
+  /* Ensure modals don't cause layout shift by keeping scrollbar space reserved */
+  body[data-scroll-locked] {
+    padding-right: 0 !important;
+    margin-right: 0 !important;
   }
 }
 

@@ -22,7 +22,7 @@ import { EmptyTodoList } from "../common/EmptyState";
 
 import { useApp } from "../../contexts/AppContext";
 
-const QuickTodosCard = ({ onOpenTodoForm }) => {
+const QuickTodosCard = ({ onOpenTodoForm, onEditTodo }) => {
   const {
     todos,
     toggleTodoComplete,
@@ -130,6 +130,7 @@ const QuickTodosCard = ({ onOpenTodoForm }) => {
                         todo={todo}
                         toggleTodoComplete={handleToggleTodoComplete}
                         openTodoForm={onOpenTodoForm}
+                        onEditTodo={onEditTodo}
                         deleteTodo={handleDeleteTodo}
                       />
                     ))}

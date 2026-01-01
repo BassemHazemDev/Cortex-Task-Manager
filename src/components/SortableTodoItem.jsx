@@ -11,9 +11,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu.jsx';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import haptics from '../utils/haptics';
 
-export function SortableTodoItem({ todo, toggleTodoComplete, openTodoForm, deleteTodo }) {
+export function SortableTodoItem({ todo, toggleTodoComplete, openTodoForm, onEditTodo, deleteTodo }) {
   const {
     attributes,
     listeners,
@@ -37,6 +38,9 @@ export function SortableTodoItem({ todo, toggleTodoComplete, openTodoForm, delet
     zIndex: isDragging ? 1000 : 'auto',
     position: 'relative',
   };
+
+  // Delete confirmation state
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   return (
     <motion.div
@@ -172,7 +176,7 @@ export function SortableTodoItem({ todo, toggleTodoComplete, openTodoForm, delet
           </Badge>
           
           {/* Kebab menu button */}
-          <DropdownMenu>
+          <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
               <button
                 onClick={(e) => e.stopPropagation()}
@@ -183,11 +187,16 @@ export function SortableTodoItem({ todo, toggleTodoComplete, openTodoForm, delet
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-44">
-              <DropdownMenuItem onClick={() => openTodoForm(todo)}>
+              <DropdownMenuItem onClick={(e) => {
+                e.stopPropagation();
+                if (onEditTodo) onEditTodo(todo);
+                else openTodoForm(todo);
+              }}>
                 <Edit className="h-4 w-4 mr-2" />
                 Edit TODO
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => {
+              <DropdownMenuItem onClick={(e) => {
+                e.stopPropagation();
                 haptics.success();
                 toggleTodoComplete(todo.id);
               }}>
@@ -197,13 +206,28 @@ export function SortableTodoItem({ todo, toggleTodoComplete, openTodoForm, delet
               <DropdownMenuSeparator />
               <DropdownMenuItem 
                 className="text-destructive focus:text-destructive"
-                onClick={() => deleteTodo(todo.id)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowDeleteConfirm(true);
+                }}
               >
                 <Trash2 className="h-4 w-4 mr-2" />
                 Delete
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+
+          {/* Delete Confirmation Dialog */}
+          <ConfirmDialog
+            open={showDeleteConfirm}
+            onOpenChange={setShowDeleteConfirm}
+            title="Delete TODO"
+            description={`Are you sure you want to delete "${todo.title}"? This action cannot be undone.`}
+            confirmLabel="Delete"
+            cancelLabel="Cancel"
+            variant="destructive"
+            onConfirm={() => deleteTodo(todo.id)}
+          />
         </div>
       </div>
     </motion.div>

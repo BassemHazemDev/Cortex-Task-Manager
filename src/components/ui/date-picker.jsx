@@ -49,7 +49,7 @@ export function DatePicker({ date, onSelect, className }) {
           {date ? format(date, "PPP") : <span>Pick a date</span>}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-3" align="start">
+      <PopoverContent className="p-3" align="start">
         <div className="flex flex-col gap-3">
             <Input 
                 placeholder="YYYY-MM-DD" 

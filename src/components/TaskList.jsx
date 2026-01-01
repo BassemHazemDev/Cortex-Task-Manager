@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/dropdown-menu.jsx";
 import { EmptyState } from "./common/EmptyState";
 import HighlightText from "./common/HighlightText";
+import { ConfirmDialog } from "./ui/ConfirmDialog";
 
 const FilterDropdown = ({ value, onChange, options, placeholder, width = "w-32" }) => {
   const selectedOption = options.find((opt) => opt.value === value);
@@ -44,14 +45,14 @@ const FilterDropdown = ({ value, onChange, options, placeholder, width = "w-32" 
           <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className={width}>
+      <DropdownMenuContent>
         {options.map((option) => (
           <DropdownMenuItem
             key={option.value}
             onSelect={() => onChange(option.value)}
             className="flex items-center justify-between cursor-pointer"
           >
-            <span className="truncate">{option.label}</span>
+            <span>{option.label}</span>
             {value === option.value && <Check className="ml-auto h-4 w-4 opacity-100" />}
           </DropdownMenuItem>
         ))}
@@ -95,7 +96,7 @@ function TagFilter({ tasks, tagFilter, setTagFilter }) {
   );
 }
 
-const TaskList = ({ tasks, onTaskClick, onToggleComplete, onDeleteTask, onToggleSubtask }) => {
+const TaskList = ({ tasks, onTaskClick, onEditTask, onToggleComplete, onDeleteTask, onToggleSubtask }) => {
   // Use the date refresh hook to handle midnight transitions
   const { getToday, getTomorrow, getDayAfterTomorrow, now } = useDateRefresh();
   
@@ -166,6 +167,9 @@ const TaskList = ({ tasks, onTaskClick, onToggleComplete, onDeleteTask, onToggle
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const tasksPerPage = 20;
+  
+  // Delete confirmation state
+  const [deleteConfirmTask, setDeleteConfirmTask] = useState(null);
 
   const getFilteredTasks = () => {
     let filteredTasks = tasks;
@@ -233,30 +237,28 @@ const TaskList = ({ tasks, onTaskClick, onToggleComplete, onDeleteTask, onToggle
       });
     }
 
-    // Apply sorting
-    return filteredTasks.sort((a, b) => {
-      switch (sortBy) {
-        case "priority": {
-          const priorityOrder = { high: 3, medium: 2, low: 1 };
-          return priorityOrder[b.priority] - priorityOrder[a.priority];
-        }
-        case "title": {
-          return a.title.localeCompare(b.title);
-        }
-        case "dueDate":
-        default: {
-          if (!a.dueDate && !b.dueDate) return 0;
-          if (!a.dueDate) return 1;
-          if (!b.dueDate) return -1;
-          const dateA = new Date(
-            a.dueDate + (a.dueTime ? `T${a.dueTime}` : "")
-          );
-          const dateB = new Date(
-            b.dueDate + (b.dueTime ? `T${b.dueTime}` : "")
-          );
-          return dateA - dateB;
-        }
+    // Apply sorting - create a copy to avoid mutating the filtered array
+    return [...filteredTasks].sort((a, b) => {
+      if (sortBy === "priority") {
+        // High priority first (descending)
+        const priorityOrder = { high: 3, medium: 2, low: 1 };
+        const priorityA = priorityOrder[a.priority] || 0;
+        const priorityB = priorityOrder[b.priority] || 0;
+        return priorityB - priorityA;
       }
+      
+      if (sortBy === "title") {
+        // Alphabetical order (A-Z)
+        return (a.title || "").localeCompare(b.title || "");
+      }
+      
+      // Default: dueDate - Latest due date first (descending)
+      if (!a.dueDate && !b.dueDate) return 0;
+      if (!a.dueDate) return 1;
+      if (!b.dueDate) return -1;
+      const dateA = new Date(a.dueDate + (a.dueTime ? `T${a.dueTime}` : "T23:59:59"));
+      const dateB = new Date(b.dueDate + (b.dueTime ? `T${b.dueTime}` : "T23:59:59"));
+      return dateB - dateA; // Descending order (latest first)
     });
   };
 
@@ -417,7 +419,64 @@ const TaskList = ({ tasks, onTaskClick, onToggleComplete, onDeleteTask, onToggle
         </Card>
       ) : (
         filteredTasks.length > 0 && (
-          <div className="flex justify-end mb-2">
+          <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+            {/* Pagination controls */}
+            {filteredTasks.length > tasksPerPage ? (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="h-8 px-2"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      let pageNum;
+                      if (totalPages <= 5) {
+                        pageNum = i + 1;
+                      } else if (currentPage <= 3) {
+                        pageNum = i + 1;
+                      } else if (currentPage >= totalPages - 2) {
+                        pageNum = totalPages - 4 + i;
+                      } else {
+                        pageNum = currentPage - 2 + i;
+                      }
+                      return (
+                        <Button
+                          key={pageNum}
+                          variant={currentPage === pageNum ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setCurrentPage(pageNum)}
+                          className="h-8 w-8 p-0"
+                        >
+                          {pageNum}
+                        </Button>
+                      );
+                    })}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                    className="h-8 px-2"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div />
+            )}
+            
+            {/* Select button */}
             <Button 
               variant="outline" 
               size="sm"
@@ -638,7 +697,7 @@ const TaskList = ({ tasks, onTaskClick, onToggleComplete, onDeleteTask, onToggle
                     )}
 
                     {/* Kebab menu for task actions */}
-                    <DropdownMenu>
+                    <DropdownMenu modal={false}>
                       <DropdownMenuTrigger asChild>
                         <Button
                           variant="ghost"
@@ -650,11 +709,16 @@ const TaskList = ({ tasks, onTaskClick, onToggleComplete, onDeleteTask, onToggle
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-48">
-                        <DropdownMenuItem onClick={() => onTaskClick(task)}>
+                        <DropdownMenuItem onClick={(e) => {
+                          e.stopPropagation();
+                          if (onEditTask) onEditTask(task);
+                          else onTaskClick(task);
+                        }}>
                           <Edit className="h-4 w-4 mr-2" />
                           Edit Task
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => {
+                        <DropdownMenuItem onClick={(e) => {
+                          e.stopPropagation();
                           haptics.success();
                           if (!task.isCompleted) playCompleteSound();
                           onToggleComplete(task.id);
@@ -665,7 +729,10 @@ const TaskList = ({ tasks, onTaskClick, onToggleComplete, onDeleteTask, onToggle
                         <DropdownMenuSeparator />
                         <DropdownMenuItem 
                           className="text-destructive focus:text-destructive"
-                          onClick={() => onDeleteTask(task.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeleteConfirmTask(task);
+                          }}
                         >
                           <Trash2 className="h-4 w-4 mr-2" />
                           Delete Task
@@ -720,64 +787,6 @@ const TaskList = ({ tasks, onTaskClick, onToggleComplete, onDeleteTask, onToggle
         )}
       </div>
 
-      {/* Pagination controls */}
-      {filteredTasks.length > tasksPerPage && (
-        <Card>
-          <CardContent className="py-3">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">
-                Page {currentPage} of {totalPages}
-              </span>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
-                  className="h-8 px-2"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <div className="flex items-center gap-1">
-                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                    let pageNum;
-                    if (totalPages <= 5) {
-                      pageNum = i + 1;
-                    } else if (currentPage <= 3) {
-                      pageNum = i + 1;
-                    } else if (currentPage >= totalPages - 2) {
-                      pageNum = totalPages - 4 + i;
-                    } else {
-                      pageNum = currentPage - 2 + i;
-                    }
-                    return (
-                      <Button
-                        key={pageNum}
-                        variant={currentPage === pageNum ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setCurrentPage(pageNum)}
-                        className="h-8 w-8 p-0"
-                      >
-                        {pageNum}
-                      </Button>
-                    );
-                  })}
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages}
-                  className="h-8 px-2"
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       {/* Summary bar showing count of filtered and total tasks */}
       {filteredTasks.length > 0 && (
         <Card>
@@ -800,6 +809,22 @@ const TaskList = ({ tasks, onTaskClick, onToggleComplete, onDeleteTask, onToggle
           </CardContent>
         </Card>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        open={!!deleteConfirmTask}
+        onOpenChange={(open) => !open && setDeleteConfirmTask(null)}
+        title="Delete Task"
+        description={deleteConfirmTask ? `Are you sure you want to delete "${deleteConfirmTask.title}"? This action cannot be undone.` : ''}
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        variant="destructive"
+        onConfirm={() => {
+          if (deleteConfirmTask) {
+            onDeleteTask(deleteConfirmTask.id);
+          }
+        }}
+      />
     </div>
   );
 };

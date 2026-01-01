@@ -109,7 +109,7 @@ export function TimePicker({ time, onSelect, className }) {
           {time ? formatTimeDisplay(time) : <span>Pick a time</span>}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[200px] p-2" align="start">
+      <PopoverContent className="p-2 w-36" align="center">
         <div className="flex flex-col gap-2">
             <Input 
                 placeholder="hh:mm AM/PM" 
