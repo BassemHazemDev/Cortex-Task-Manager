@@ -1,8 +1,17 @@
 import { useState, useEffect, memo, useMemo, useCallback } from 'react';
 import { useDateRefresh } from '../hooks/useDateRefresh';
-import { ChevronLeft, ChevronRight, CheckCircle, Clock } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CheckCircle, Clock, Edit, Trash2 } from 'lucide-react';
 import { isOverdue, formatTime12, pad } from '../utils/dateUtils';
 import { playCompleteSound } from '../utils/audioUtils';
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+  ContextMenuSeparator,
+} from "@/components/ui/context-menu";
+
+import { ConfirmDialog } from './ui/ConfirmDialog';
 
 // UI component mocks for demonstration; replace with your actual UI library imports in production.
 const Button = ({ children, ...props }) => <button {...props}>{children}</button>;
@@ -13,7 +22,7 @@ const CardContent = ({ children, ...props }) => <div {...props}>{children}</div>
 const Badge = ({ children, variant, ...props }) => <span data-variant={variant} {...props}>{children}</span>;
 
 
-const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggleComplete, expanded, onTaskDrop, onCreateDate }) => {
+const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggleComplete, expanded, onTaskDrop, onCreateDate, onEditTask, onDeleteTask }) => {
   // Use the date refresh hook to handle midnight transitions
   const { now } = useDateRefresh();
   
@@ -22,6 +31,7 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
   
   // Drag-and-drop state for dragging task
   const [draggedTaskId, setDraggedTaskId] = useState(null);
+  const [deleteConfirmTask, setDeleteConfirmTask] = useState(null);
   // Tracks the current theme mode (dark or light) for initial render reliability
   const [isDark, setIsDark] = useState(() => {
     if (typeof document !== 'undefined') {
@@ -367,45 +377,78 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
                         opacity = isDark ? 0.9 : 1;
                       }
                       return (
-                        <div
-                          key={task.id}
-                          className={`text-xs p-1 rounded shadow-md transition-all duration-200 cursor-pointer hover:scale-[1.03] hover:shadow-lg hover:bg-[var(--accent)] hover:text-[var(--accent-foreground)]`}
-                          style={{ 
-                            background: bg, 
-                            color, 
-                            textDecoration: task.isCompleted ? 'line-through' : 'none', 
-                            display: 'flex', 
-                            alignItems: 'flex-start', 
-                            gap: expanded ? '0.15rem' : '0', 
-                            flexDirection: expanded && task.title && task.title.length > 18 ? 'column' : 'row', 
-                            opacity: draggedTaskId === task.id ? 0.5 : opacity, 
-                            maxWidth: '100%', 
-                            overflow: 'hidden',
-                            wordBreak: 'break-word',
-                            overflowWrap: 'break-word'
-                          }}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onTaskClick(task);
-                          }}
-                          draggable
-                          onDragStart={(e) => handleDragStart(e, task.id)}
-                          onDragEnd={handleDragEnd}
-                        >
-                          <span style={{ 
-                            wordBreak: 'break-word', 
-                            whiteSpace: 'normal', 
-                            overflow: 'hidden', 
-                            textOverflow: 'ellipsis',
-                            maxWidth: '100%',
-                            display: 'block'
-                          }}>{task.title}</span>
-                          {expanded && task.dueTime && (
-                            <span style={{ fontWeight: 600, color: 'var(--muted-foreground)', fontSize: '0.95em', marginLeft: expanded && task.title && task.title.length > 18 ? 0 : '0.25rem', marginTop: expanded && task.title && task.title.length > 18 ? '2px' : 0 }}>
-                              {formatTime12(task.dueTime)}
-                            </span>
-                          )}
-                        </div>
+                        <ContextMenu key={task.id}>
+                          <ContextMenuTrigger asChild>
+                            <div
+                              className={`text-xs p-1 rounded shadow-md transition-all duration-200 cursor-pointer hover:scale-[1.03] hover:shadow-lg hover:bg-[var(--accent)] hover:text-[var(--accent-foreground)]`}
+                              style={{ 
+                                background: bg, 
+                                color, 
+                                textDecoration: task.isCompleted ? 'line-through' : 'none', 
+                                display: 'flex', 
+                                alignItems: 'flex-start', 
+                                gap: expanded ? '0.15rem' : '0', 
+                                flexDirection: expanded && task.title && task.title.length > 18 ? 'column' : 'row', 
+                                opacity: draggedTaskId === task.id ? 0.5 : opacity, 
+                                maxWidth: '100%', 
+                                overflow: 'hidden',
+                                wordBreak: 'break-word',
+                                overflowWrap: 'break-word'
+                              }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onTaskClick(task);
+                              }}
+                              draggable
+                              onDragStart={(e) => handleDragStart(e, task.id)}
+                              onDragEnd={handleDragEnd}
+                              onContextMenu={(e) => {
+                                // Prevent native context menu if we want strictly custom, 
+                                // though Radix usually handles this on the Trigger. 
+                                // Keeping it standard.
+                              }}
+                            >
+                              <span style={{ 
+                                wordBreak: 'break-word', 
+                                whiteSpace: 'normal', 
+                                overflow: 'hidden', 
+                                textOverflow: 'ellipsis',
+                                maxWidth: '100%',
+                                display: 'block'
+                              }}>{task.title}</span>
+                              {expanded && task.dueTime && (
+                                <span style={{ fontWeight: 600, color: 'var(--muted-foreground)', fontSize: '0.95em', marginLeft: expanded && task.title && task.title.length > 18 ? 0 : '0.25rem', marginTop: expanded && task.title && task.title.length > 18 ? '2px' : 0 }}>
+                                  {formatTime12(task.dueTime)}
+                                </span>
+                              )}
+                            </div>
+                          </ContextMenuTrigger>
+                          <ContextMenuContent className="w-48">
+                            <ContextMenuItem onSelect={() => {
+                              if (onEditTask) onEditTask(task);
+                            }}>
+                              <Edit className="h-4 w-4 mr-2" />
+                              Edit Task
+                            </ContextMenuItem>
+                            <ContextMenuItem onSelect={() => {
+                              if (!task.isCompleted) playCompleteSound();
+                              onToggleComplete(task.id);
+                            }}>
+                              <CheckCircle className="h-4 w-4 mr-2" />
+                              {task.isCompleted ? 'Mark Pending' : 'Complete'}
+                            </ContextMenuItem>
+                            <ContextMenuSeparator />
+                            <ContextMenuItem 
+                              className="text-destructive focus:text-destructive"
+                              onSelect={() => {
+                                setDeleteConfirmTask(task);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete Task
+                            </ContextMenuItem>
+                          </ContextMenuContent>
+                        </ContextMenu>
                       );
                     })}
                     {/* In month view, always show all tasks, so no '+N more' indicator */}
@@ -489,77 +532,119 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
                     color = isDark ? '#fee2e2' : '#7f1d1d';
                     opacity = 1;
                   }
-                  return (
-                    <div
-                      key={task.id}
-                      className="flex items-center justify-between p-3 rounded-lg shadow-md cursor-pointer transition-all duration-200 hover:scale-[1.03] hover:shadow-lg hover:bg-[var(--accent)] hover:text-[var(--accent-foreground)] task-container overflow-hidden"
-                      style={{ background: bg, color, opacity }}
-                      onClick={() => onTaskClick(task)}
-                    >
-                      <div className="flex items-center space-x-3">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (!task.isCompleted) playCompleteSound();
-                            onToggleComplete(task.id);
-                          }}
-                          className="w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all"
-                          style={{ background: task.isCompleted ? 'var(--accent-2)' : 'var(--background)', borderColor: task.isCompleted ? 'var(--accent-2)' : 'var(--primary-muted)' }}
-                        >
-                          {task.isCompleted && <CheckCircle className="h-3 w-3" style={{ color: 'var(--success-foreground, #fff)' }} />}
-                        </button>
-                        <div>
-                          <h4 className="font-medium truncate" style={{ color: task.isCompleted ? 'var(--muted-foreground)' : color, textDecoration: task.isCompleted ? 'line-through' : 'none' }} title={task.title}>
-                            {task.title}
-                          </h4>
-                          {task.description && (
-                            <p 
-                              className="text-sm mt-1 break-words overflow-hidden" 
-                              style={{ 
-                                color: 'var(--muted-foreground)',
-                                display: "-webkit-box",
-                                WebkitLineClamp: 2,
-                                WebkitBoxOrient: "vertical",
-                                maxHeight: "3rem"
-                              }}
-                              title={task.description}
+                      return (
+                        <ContextMenu key={task.id}>
+                          <ContextMenuTrigger asChild>
+                            <div
+                              className="flex items-center justify-between p-3 rounded-lg shadow-md cursor-pointer transition-all duration-200 hover:scale-[1.03] hover:shadow-lg hover:bg-[var(--accent)] hover:text-[var(--accent-foreground)] task-container overflow-hidden"
+                              style={{ background: bg, color, opacity }}
+                              onClick={() => onTaskClick(task)}
                             >
-                              {task.description}
-                            </p>
-                          )}
-                          {Array.isArray(task.tags) && task.tags.length > 0 && (
-                            <div className="flex flex-wrap gap-1 mt-1">
-                              {task.tags.map(tag => (
-                                <Badge key={tag} variant="outline" className="text-xs">
-                                  {tag}
+                              <div className="flex items-center space-x-3">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (!task.isCompleted) playCompleteSound();
+                                    onToggleComplete(task.id);
+                                  }}
+                                  className="w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all"
+                                  style={{ background: task.isCompleted ? 'var(--accent-2)' : 'var(--background)', borderColor: task.isCompleted ? 'var(--accent-2)' : 'var(--primary-muted)' }}
+                                >
+                                  {task.isCompleted && <CheckCircle className="h-3 w-3" style={{ color: 'var(--success-foreground, #fff)' }} />}
+                                </button>
+                                <div>
+                                  <h4 className="font-medium truncate" style={{ color: task.isCompleted ? 'var(--muted-foreground)' : color, textDecoration: task.isCompleted ? 'line-through' : 'none' }} title={task.title}>
+                                    {task.title}
+                                  </h4>
+                                  {task.description && (
+                                    <p 
+                                      className="text-sm mt-1 break-words overflow-hidden" 
+                                      style={{ 
+                                        color: 'var(--muted-foreground)',
+                                        display: "-webkit-box",
+                                        WebkitLineClamp: 2,
+                                        WebkitBoxOrient: "vertical",
+                                        maxHeight: "3rem"
+                                      }}
+                                      title={task.description}
+                                    >
+                                      {task.description}
+                                    </p>
+                                  )}
+                                  {Array.isArray(task.tags) && task.tags.length > 0 && (
+                                    <div className="flex flex-wrap gap-1 mt-1">
+                                      {task.tags.map(tag => (
+                                        <Badge key={tag} variant="outline" className="text-xs">
+                                          {tag}
+                                        </Badge>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="flex items-center space-x-3 flex-shrink-0">
+                                {task.dueTime && (
+                                  <p className="text-sm px-2 py-1 rounded-md" style={{ background: 'var(--muted)', color: 'var(--muted-foreground)' }}>{formatTime12(task.dueTime)}</p>
+                                )}
+                                {task.estimatedDuration && (
+                                  <p className="text-sm px-2 py-1 rounded-md" style={{ background: 'var(--muted)', color: 'var(--muted-foreground)' }}>{task.estimatedDuration}m</p>
+                                )}
+                                <Badge variant={
+                                  task.priority === 'high' ? 'default' : 
+                                  task.priority === 'medium' ? 'default' : 
+                                  'secondary'
+                                }>
+                                  {task.priority}
                                 </Badge>
-                              ))}
+                              </div>
                             </div>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-3 flex-shrink-0">
-                        {task.dueTime && (
-                          <p className="text-sm px-2 py-1 rounded-md" style={{ background: 'var(--muted)', color: 'var(--muted-foreground)' }}>{formatTime12(task.dueTime)}</p>
-                        )}
-                        {task.estimatedDuration && (
-                          <p className="text-sm px-2 py-1 rounded-md" style={{ background: 'var(--muted)', color: 'var(--muted-foreground)' }}>{task.estimatedDuration}m</p>
-                        )}
-                        <Badge variant={
-                          task.priority === 'high' ? 'default' : 
-                          task.priority === 'medium' ? 'default' : 
-                          'secondary'
-                        }>
-                          {task.priority}
-                        </Badge>
-                      </div>
-                    </div>
-                  );
+                          </ContextMenuTrigger>
+                          <ContextMenuContent className="w-48">
+                            <ContextMenuItem onSelect={() => {
+                              if (onEditTask) onEditTask(task);
+                            }}>
+                              <Edit className="h-4 w-4 mr-2" />
+                              Edit Task
+                            </ContextMenuItem>
+                            <ContextMenuItem onSelect={() => {
+                              if (!task.isCompleted) playCompleteSound();
+                              onToggleComplete(task.id);
+                            }}>
+                              <CheckCircle className="h-4 w-4 mr-2" />
+                              {task.isCompleted ? 'Mark Pending' : 'Complete'}
+                            </ContextMenuItem>
+                            <ContextMenuSeparator />
+                            <ContextMenuItem 
+                              className="text-destructive focus:text-destructive"
+                              onSelect={() => {
+                                setDeleteConfirmTask(task);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete Task
+                            </ContextMenuItem>
+                          </ContextMenuContent>
+                        </ContextMenu>
+                      );
                 })}
               </div>
             )}
           </CardContent>
         </Card>
+      )}
+      
+      {deleteConfirmTask && (
+        <ConfirmDialog
+          open={!!deleteConfirmTask}
+          onOpenChange={(open) => !open && setDeleteConfirmTask(null)}
+          title="Delete Task"
+          description={`Are you sure you want to delete "${deleteConfirmTask.title}"? This action cannot be undone.`}
+          onConfirm={() => {
+            if (onDeleteTask) onDeleteTask(deleteConfirmTask.id);
+            setDeleteConfirmTask(null);
+          }}
+          onCancel={() => setDeleteConfirmTask(null)}
+        />
       )}
     </div>
   );

@@ -195,6 +195,7 @@ export function TaskProvider({ children }) {
     const newTask = {
       ...taskData,
       id: Date.now(),
+      createdAt: new Date().toISOString(),
       isCompleted: false,
       assignedSlot: null,
     };

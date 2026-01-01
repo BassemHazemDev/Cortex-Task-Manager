@@ -252,13 +252,21 @@ const TaskList = ({ tasks, onTaskClick, onEditTask, onToggleComplete, onDeleteTa
         return (a.title || "").localeCompare(b.title || "");
       }
       
-      // Default: dueDate - Latest due date first (descending)
+      if (sortBy === "latestAdded") {
+        // Latest added first (descending by createdAt, fallback to id)
+        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        if (dateA !== dateB) return dateB - dateA;
+        return b.id - a.id;
+      }
+      
+      // Default: dueDate - Earliest due date first (ascending: Overdue -> Today -> Future)
       if (!a.dueDate && !b.dueDate) return 0;
-      if (!a.dueDate) return 1;
-      if (!b.dueDate) return -1;
-      const dateA = new Date(a.dueDate + (a.dueTime ? `T${a.dueTime}` : "T23:59:59"));
-      const dateB = new Date(b.dueDate + (b.dueTime ? `T${b.dueTime}` : "T23:59:59"));
-      return dateB - dateA; // Descending order (latest first)
+      if (!a.dueDate) return 1; // No due date at the end
+      if (!b.dueDate) return -1; // No due date at the end
+      const dateA = new Date(a.dueDate + (a.dueTime ? `T${a.dueTime}` : "T00:00:00"));
+      const dateB = new Date(b.dueDate + (b.dueTime ? `T${b.dueTime}` : "T00:00:00"));
+      return dateA - dateB; // Ascending order
     });
   };
 
@@ -341,6 +349,7 @@ const TaskList = ({ tasks, onTaskClick, onEditTask, onToggleComplete, onDeleteTa
                         width="w-32"
                         options={[
                           { value: "dueDate", label: "Due Date" },
+                          { value: "latestAdded", label: "Latest Added" },
                           { value: "priority", label: "Priority" },
                           { value: "title", label: "Title" },
                         ]}

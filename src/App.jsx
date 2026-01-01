@@ -372,6 +372,8 @@ function App() {
                     const dateStr = `${newDate.getFullYear()}-${pad(newDate.getMonth() + 1)}-${pad(newDate.getDate())}`;
                     handleUpdateTask(taskId, { dueDate: dateStr });
                   }}
+                  onEditTask={editTaskDirectly}
+                  onDeleteTask={handleDeleteTask}
                 />
               </div>
             )}
