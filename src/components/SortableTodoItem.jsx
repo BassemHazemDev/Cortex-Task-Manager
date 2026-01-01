@@ -59,12 +59,17 @@ export function SortableTodoItem({ todo, toggleTodoComplete, openTodoForm, delet
               haptics.success();
               toggleTodoComplete(todo.id);
             }}
-            className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-300 flex-shrink-0 ${
+            className={`rounded-full border-2 flex items-center justify-center transition-all duration-300 flex-shrink-0 ${
               todo.isCompleted
                 ? "border-[var(--accent-2)] hover:border-[var(--accent-2)]"
                 : "border-muted-foreground/30 hover:border-[var(--accent-2)]"
             }`}
             style={{
+              width: "18px",
+              height: "18px",
+              minWidth: "18px",
+              minHeight: "18px",
+              padding: 0,
               background: todo.isCompleted
                 ? "var(--accent-2)"
                 : "transparent",

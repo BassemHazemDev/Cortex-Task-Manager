@@ -7,7 +7,7 @@
  */
 
 import { memo } from 'react';
-import { Calendar, CheckCircle, Sparkles, Plus, Settings } from 'lucide-react';
+import { Calendar, CheckCircle, Sparkles, Plus, BarChart2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import haptics from '../utils/haptics';
 
@@ -21,7 +21,7 @@ function NavButton({ icon, label, active, onClick }) {
         haptics.light();
         onClick();
       }}
-      className={`flex flex-col items-center justify-center px-3 py-2 rounded-lg transition-all duration-200 ${
+      className={`flex flex-col items-center justify-center px-1 py-1 rounded-lg transition-all duration-200 min-w-[3.5rem] ${
         active 
           ? 'text-primary bg-primary/10' 
           : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
@@ -30,7 +30,7 @@ function NavButton({ icon, label, active, onClick }) {
       <span className={`transition-transform ${active ? 'scale-110' : ''}`}>
         {icon}
       </span>
-      <span className={`text-xs mt-1 font-medium ${active ? 'text-primary' : ''}`}>
+      <span className={`text-[10px] mt-1 font-medium ${active ? 'text-primary' : ''}`}>
         {label}
       </span>
     </button>
@@ -78,9 +78,9 @@ function MobileNav({
       initial={{ y: 100 }}
       animate={{ y: 0 }}
       transition={{ type: "spring", stiffness: 300, damping: 30 }}
-      className="fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur-lg border-t border-border z-50 lg:hidden safe-area-bottom"
+      className="fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur-lg border-t border-border z-50 lg:hidden safe-area-bottom pb-2"
     >
-      <div className="flex justify-around items-center h-16 px-2 max-w-lg mx-auto">
+      <div className="flex justify-between items-end h-16 px-4 w-full mx-auto pb-2">
         <NavButton
           icon={<Calendar className="h-5 w-5" />}
           label="Calendar"
@@ -95,7 +95,9 @@ function MobileNav({
           onClick={() => setCurrentView('tasks')}
         />
         
-        <FloatingAddButton onClick={onAddTask} />
+        <div className="flex justify-center items-end px-2">
+            <FloatingAddButton onClick={onAddTask} />
+        </div>
         
         <NavButton
           icon={<Sparkles className="h-5 w-5" />}
@@ -105,10 +107,10 @@ function MobileNav({
         />
         
         <NavButton
-          icon={<Settings className="h-5 w-5" />}
-          label="Settings"
-          active={false}
-          onClick={onOpenSettings}
+          icon={<BarChart2 className="h-5 w-5" />}
+          label="Stats"
+          active={currentView === 'statistics'}
+          onClick={() => setCurrentView('statistics')}
         />
       </div>
     </motion.nav>
