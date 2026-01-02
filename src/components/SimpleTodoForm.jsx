@@ -1,38 +1,49 @@
 /**
  * SimpleTodoForm Component
- * 
+ *
  * A simplified modal form for adding quick TODO items.
  * Unlike regular tasks, these TODOs only have:
  * - Title
  * - Description
  * - Priority
- * 
+ *
  * They are stored separately and don't appear in the calendar.
  */
 
 import { useState, memo } from "react";
 import { CheckCircle, X, Save } from "lucide-react";
 import { Button } from "@/components/ui/button.jsx";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.jsx";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card.jsx";
 import { Input } from "@/components/ui/input.jsx";
 import { Textarea } from "@/components/ui/textarea.jsx";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select.jsx";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select.jsx";
 import { Label } from "@/components/ui/label.jsx";
-import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
+import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 
 function SimpleTodoForm({ todo, onSave, onCancel }) {
   const [formData, setFormData] = useState(() => {
     if (todo) {
       return {
-        title: todo.title || '',
-        description: todo.description || '',
-        priority: todo.priority || 'medium',
+        title: todo.title || "",
+        description: todo.description || "",
+        priority: todo.priority || "medium",
       };
     }
     return {
-      title: '',
-      description: '',
-      priority: 'medium',
+      title: "",
+      description: "",
+      priority: "medium",
     };
   });
 
@@ -42,7 +53,7 @@ function SimpleTodoForm({ todo, onSave, onCancel }) {
     const newErrors = {};
 
     if (!formData.title.trim()) {
-      newErrors.title = 'Title is required';
+      newErrors.title = "Title is required";
     }
 
     setErrors(newErrors);
@@ -51,7 +62,7 @@ function SimpleTodoForm({ todo, onSave, onCancel }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
@@ -66,37 +77,41 @@ function SimpleTodoForm({ todo, onSave, onCancel }) {
   };
 
   const handleChange = (field, value) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [field]: value
+      [field]: value,
     }));
     if (errors[field]) {
-      setErrors(prev => ({
+      setErrors((prev) => ({
         ...prev,
-        [field]: ''
+        [field]: "",
       }));
     }
   };
 
   useKeyboardShortcuts({
-    'ctrl+enter': handleSubmit
+    "ctrl+enter": handleSubmit,
   });
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <Card className="w-full max-w-md" style={{ maxHeight: '90vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-        <div style={{ overflowY: 'auto', flex: 1 }}>
+    <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+      <Card
+        className="w-full max-w-md"
+        style={{
+          maxHeight: "90vh",
+          overflow: "hidden",
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
+        <div style={{ overflowY: "auto", flex: 1 }}>
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center space-x-2">
                 <CheckCircle className="h-5 w-5 text-[var(--primary)]" />
-                <span>{todo ? 'Edit TODO' : 'Add Quick TODO'}</span>
+                <span>{todo ? "Edit TODO" : "Add Quick TODO"}</span>
               </CardTitle>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onCancel}
-              >
+              <Button variant="ghost" size="sm" onClick={onCancel}>
                 <X className="h-4 w-4" />
               </Button>
             </div>
@@ -109,9 +124,9 @@ function SimpleTodoForm({ todo, onSave, onCancel }) {
                 <Input
                   id="title"
                   value={formData.title}
-                  onChange={(e) => handleChange('title', e.target.value)}
+                  onChange={(e) => handleChange("title", e.target.value)}
                   placeholder="What needs to be done?"
-                  className={errors.title ? 'border-red-500' : ''}
+                  className={errors.title ? "border-red-500" : ""}
                   autoFocus
                 />
                 {errors.title && (
@@ -125,7 +140,7 @@ function SimpleTodoForm({ todo, onSave, onCancel }) {
                 <Textarea
                   id="description"
                   value={formData.description}
-                  onChange={(e) => handleChange('description', e.target.value)}
+                  onChange={(e) => handleChange("description", e.target.value)}
                   placeholder="Add any details..."
                   rows={3}
                 />
@@ -134,7 +149,10 @@ function SimpleTodoForm({ todo, onSave, onCancel }) {
               {/* Priority selection */}
               <div className="space-y-2">
                 <Label htmlFor="priority">Priority</Label>
-                <Select value={formData.priority} onValueChange={(value) => handleChange('priority', value)}>
+                <Select
+                  value={formData.priority}
+                  onValueChange={(value) => handleChange("priority", value)}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select priority" />
                   </SelectTrigger>
@@ -151,12 +169,19 @@ function SimpleTodoForm({ todo, onSave, onCancel }) {
                 <Button
                   type="submit"
                   className="flex-1 text-white"
-                  style={{ background: 'var(--primary)', border: '1px solid var(--accent-2)' }}
-                  onMouseOver={e => e.currentTarget.style.background = 'var(--primary-muted)'}
-                  onMouseOut={e => e.currentTarget.style.background = 'var(--primary)'}
+                  style={{
+                    background: "var(--primary)",
+                    border: "1px solid var(--accent-2)",
+                  }}
+                  onMouseOver={(e) =>
+                    (e.currentTarget.style.background = "var(--primary-muted)")
+                  }
+                  onMouseOut={(e) =>
+                    (e.currentTarget.style.background = "var(--primary)")
+                  }
                 >
                   <Save className="h-4 w-4 mr-2" />
-                  {todo ? 'Update TODO' : 'Add TODO'}
+                  {todo ? "Update TODO" : "Add TODO"}
                 </Button>
                 <Button
                   type="button"
