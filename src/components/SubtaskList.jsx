@@ -1,23 +1,23 @@
-import React from 'react';
-import { CheckCircle, Circle, Trash2, GripVertical } from 'lucide-react';
-import { Button } from './ui/button';
-import { Input } from './ui/input';
-import { cn } from '@/lib/utils';
+import React from "react";
+import { CheckSquare, Square, Trash2, GripVertical } from "lucide-react";
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
+import { cn } from "@/lib/utils";
 
-export function SubtaskList({ 
-  subtasks = [], 
-  onToggle, 
-  onDelete, 
+export function SubtaskList({
+  subtasks = [],
+  onToggle,
+  onDelete,
   onUpdate,
-  readOnly = false 
+  readOnly = false,
 }) {
   if (!subtasks.length) return null;
 
   return (
     <div className="space-y-2">
       {subtasks.map((subtask) => (
-        <div 
-          key={subtask.id} 
+        <div
+          key={subtask.id}
           className={cn(
             "flex items-center gap-2 group p-2 rounded-md transition-colors",
             !readOnly && "hover:bg-muted/50"
@@ -34,28 +34,32 @@ export function SubtaskList({
             )}
           >
             {subtask.isCompleted ? (
-              <CheckCircle className="h-4 w-4" />
+              <CheckSquare className="h-4 w-4" />
             ) : (
-              <Circle className="h-4 w-4" />
+              <Square className="h-4 w-4" />
             )}
           </button>
 
           {/* Content */}
           <div className="flex-1 min-w-0">
-             {readOnly || !onUpdate ? (
-               <span className={cn(
-                 "text-sm block truncate",
-                 subtask.isCompleted && "line-through text-muted-foreground"
-               )}>
-                 {subtask.title}
-               </span>
-             ) : (
-               <Input 
-                 value={subtask.title} 
-                 onChange={(e) => onUpdate(subtask.id, { title: e.target.value })}
-                 className="h-7 text-sm bg-transparent border-transparent hover:border-input focus:border-input px-1"
-               />
-             )}
+            {readOnly || !onUpdate ? (
+              <span
+                className={cn(
+                  "text-sm block truncate",
+                  subtask.isCompleted && "line-through text-muted-foreground"
+                )}
+              >
+                {subtask.title}
+              </span>
+            ) : (
+              <Input
+                value={subtask.title}
+                onChange={(e) =>
+                  onUpdate(subtask.id, { title: e.target.value })
+                }
+                className="h-7 text-sm bg-transparent border-transparent hover:border-input focus:border-input px-1"
+              />
+            )}
           </div>
 
           {/* Actions */}

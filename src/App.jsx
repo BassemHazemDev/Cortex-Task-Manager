@@ -242,6 +242,17 @@ function App() {
 
   const handleToggleSubtaskComplete = (taskId, subtaskId) => {
     contextToggleSubtaskComplete(taskId, subtaskId);
+
+    // Also update viewingItem to reflect changes immediately in the modal
+    if (viewingItem && viewingItem.id === taskId) {
+      const updatedSubtasks = (viewingItem.subtasks || []).map((st) =>
+        st.id === subtaskId ? { ...st, isCompleted: !st.isCompleted } : st
+      );
+      setViewingItem({
+        ...viewingItem,
+        subtasks: updatedSubtasks,
+      });
+    }
   };
 
   // Handler for updating subtask properties (used for inline editing in detail view)

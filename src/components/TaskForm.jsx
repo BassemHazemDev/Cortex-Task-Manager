@@ -264,31 +264,39 @@ const TaskForm = ({ task, initialDate, onSave, onCancel }) => {
 
   const { templates, addTemplate, applyTemplate } = useTaskTemplates();
 
+  // Track the currently selected template (default to 'Text' for new tasks)
+  const [selectedTemplate, setSelectedTemplate] = useState(() => {
+    if (task) return ""; // No template pre-selected when editing
+    // Find the Text template to get its ID/name for default selection
+    return "Text";
+  });
+
   const handleApplyTemplate = (templateId) => {
     const template = templates.find(
-      (t) => t.id === templateId || t.name === templateId
-    ); // Handle ID or Name if SelectValue returns string
-    // Shadcn Select value is string. If we use IDs, we need to find by ID.
-    // If IDs are numbers, we might need parsing.
-    // Let's assume passed value is ID string.
+      (t) =>
+        t.id === templateId ||
+        t.name === templateId ||
+        String(t.id) === templateId
+    );
 
     if (template) {
       const defaults = applyTemplate(template);
+      // Reset form data to initial state before applying template
+      // (wipe data when changing template)
       setFormData((prev) => ({
-        ...prev,
-        ...defaults,
-        // valid check for title to append if needed, or just replace?
-        // Plan says "returns pre-filled task data".
-        // Let's replace simple fields but maybe keep date if set?
-        // Actually, if I select "Meeting", I probably want duration, priority, tags.
-        // Title might be "Meeting: " prefix.
-        title: defaults.title || prev.title,
-        estimatedDuration: defaults.estimatedDuration || prev.estimatedDuration,
-        priority: defaults.priority || prev.priority,
-        tags: [...new Set([...prev.tags, ...(defaults.tags || [])])],
-        description: defaults.description || prev.description,
+        title: "",
+        description: defaults.description || "",
         descriptionType: defaults.descriptionType || "text",
+        dueDate: prev.dueDate || initialDate || "", // Keep the date
+        dueTime: "",
+        priority: defaults.priority || "medium",
+        estimatedDuration: defaults.estimatedDuration || 60,
+        tags: defaults.tags || [],
+        repeatUntil: "",
+        repeatFrequency: "none",
+        subtasks: [],
       }));
+      setSelectedTemplate(template.name);
     }
   };
 
@@ -359,13 +367,13 @@ const TaskForm = ({ task, initialDate, onSave, onCancel }) => {
                       Apply Template
                     </Label>
                     <Select
+                      value={selectedTemplate}
                       onValueChange={(val) => {
-                        // Find template by some ID.
-                        // Since ID can be number, and Select value is string.
+                        // Find template by name (since we use name as value)
                         const tmpl = templates.find(
-                          (t) => String(t.id) === val || t.name === val
+                          (t) => t.name === val || String(t.id) === val
                         );
-                        if (tmpl) handleApplyTemplate(tmpl.id);
+                        if (tmpl) handleApplyTemplate(tmpl.name);
                       }}
                     >
                       <SelectTrigger className="h-8">
@@ -373,10 +381,7 @@ const TaskForm = ({ task, initialDate, onSave, onCancel }) => {
                       </SelectTrigger>
                       <SelectContent>
                         {templates.map((t) => (
-                          <SelectItem
-                            key={t.id || t.name}
-                            value={String(t.id || t.name)}
-                          >
+                          <SelectItem key={t.id || t.name} value={t.name}>
                             {t.name}
                           </SelectItem>
                         ))}
