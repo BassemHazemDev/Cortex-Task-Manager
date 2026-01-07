@@ -1,7 +1,7 @@
 import { useState, useEffect, memo, useMemo, useCallback } from 'react';
 import { useDateRefresh } from '../hooks/useDateRefresh';
 import { useLongPress } from '../hooks/useLongPress';
-import { ChevronLeft, ChevronRight, CheckCircle, Clock, Edit, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CheckCircle, Clock, Edit, Trash2, Maximize2, X } from 'lucide-react';
 import { isOverdue, formatTime12, pad } from '../utils/dateUtils';
 import { playCompleteSound } from '../utils/audioUtils';
 import { EmptyCalendarDay } from './common/EmptyState';
@@ -31,7 +31,7 @@ const CardContent = ({ children, ...props }) => <div {...props}>{children}</div>
 const Badge = ({ children, variant, ...props }) => <span data-variant={variant} {...props}>{children}</span>;
 
 
-const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggleComplete, expanded, onTaskDrop, onCreateDate, onEditTask, onDeleteTask }) => {
+const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggleComplete, expanded, onTaskDrop, onCreateDate, onEditTask, onDeleteTask, isMobile, mobileExpanded, onToggleMobileExpand }) => {
   // Use the date refresh hook to handle midnight transitions
   const { now } = useDateRefresh();
   
@@ -219,7 +219,18 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
             <CardTitle className="text-xl font-bold" style={{ color: 'var(--foreground)' }}>
               {getHeaderTitle()}
             </CardTitle>
-            <div className="flex space-x-2">
+            <div className="flex space-x-2 items-center">
+              {/* Mobile Expand Button */}
+              {isMobile && (
+                <Button
+                  className="p-2 rounded-md transition-all hover:bg-primary/10"
+                  style={{ background: 'var(--card)', color: 'var(--primary)' }}
+                  onClick={onToggleMobileExpand}
+                  aria-label="Expand Calendar"
+                >
+                  <Maximize2 className="h-5 w-5" />
+                </Button>
+              )}
               <Button
                 className="p-2 rounded-md"
                 style={{ background: 'var(--card)', color: 'var(--foreground)' }}
@@ -831,6 +842,185 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+      )}
+      
+      {/* Full-Screen Mobile Calendar Modal */}
+      {isMobile && mobileExpanded && (
+        <div className="fixed inset-0 z-50 bg-background flex flex-col overflow-hidden">
+          {/* Modal Header */}
+          <div className="flex items-center justify-between p-4 border-b bg-card">
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={onToggleMobileExpand}
+                className="p-2 rounded-lg bg-muted hover:bg-muted/80 transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+              <h2 className="text-lg font-bold">
+                {currentMonth.toLocaleString('default', { month: 'long', year: 'numeric' })}
+              </h2>
+            </div>
+            <div className="flex space-x-2">
+              <button
+                className="p-2 rounded-lg bg-muted hover:bg-muted/80 transition-colors"
+                onClick={() => navigateMonth(-1)}
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+              <button
+                className="p-2 rounded-lg bg-muted hover:bg-muted/80 transition-colors"
+                onClick={() => navigateMonth(1)}
+              >
+                <ChevronRight className="h-5 w-5" />
+              </button>
+            </div>
+          </div>
+          
+          {/* Calendar Grid */}
+          <div className="flex-1 overflow-auto p-2">
+            {/* Day Headers */}
+            <div className="grid grid-cols-7 gap-1 mb-2">
+              {['Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri'].map(day => (
+                <div key={day} className="text-center text-xs font-medium text-muted-foreground py-2">
+                  {day}
+                </div>
+              ))}
+            </div>
+            
+            {/* Calendar Days */}
+            <div className="grid grid-cols-7 gap-1">
+              {getDaysInMonth(currentMonth).map((date, index) => {
+                if (!date) {
+                  return <div key={`empty-${index}`} className="aspect-square" />;
+                }
+                
+                const dayNum = date.getDate();
+                const dateStr = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(dayNum)}`;
+                const dayTasks = tasks.filter(t => t.dueDate === dateStr && !t.isCompleted);
+                const isTodayDate = now.getDate() === dayNum && 
+                               now.getMonth() === date.getMonth() && 
+                               now.getFullYear() === date.getFullYear();
+                const isSelectedDate = selectedDate && 
+                                   selectedDate.getDate() === dayNum && 
+                                   selectedDate.getMonth() === date.getMonth() &&
+                                   selectedDate.getFullYear() === date.getFullYear();
+                
+                return (
+                  <div
+                    key={`day-${dayNum}-${index}`}
+                    onClick={() => onDateSelect(date)}
+                    className={`
+                      min-h-[80px] p-1 rounded-lg border transition-all cursor-pointer
+                      ${isTodayDate ? 'border-primary bg-primary/5' : 'border-border/50'}
+                      ${isSelectedDate ? 'ring-2 ring-primary' : ''}
+                      hover:bg-muted/50
+                    `}
+                  >
+                    <div className={`text-sm font-medium mb-1 ${isTodayDate ? 'text-primary' : ''}`}>
+                      {dayNum}
+                    </div>
+                    {/* Task Titles - limit to 3, smaller text */}
+                    <div className="space-y-[2px]">
+                      {dayTasks.slice(0, 3).map(task => {
+                        // Match web version colors using CSS variables
+                        const bgStyle = task.priority === 'medium'
+                          ? 'var(--accent)'
+                          : task.priority === 'high'
+                            ? 'var(--accent-2)'
+                            : 'var(--muted)';
+                        const colorStyle = task.priority === 'medium' || task.priority === 'high'
+                          ? 'var(--accent-foreground)'
+                          : 'var(--foreground)';
+                        
+                        return (
+                          <div
+                            key={task.id}
+                            className="text-[8px] leading-tight px-1 py-[2px] rounded shadow-sm line-clamp-2"
+                            style={{ 
+                              background: bgStyle, 
+                              color: colorStyle,
+                              display: '-webkit-box',
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: 'vertical',
+                              overflow: 'hidden',
+                              wordBreak: 'break-word'
+                            }}
+                            title={task.title}
+                          >
+                            {task.title}
+                          </div>
+                        );
+                      })}
+                      {dayTasks.length > 3 && (
+                        <div className="text-[8px] text-muted-foreground px-1">
+                          +{dayTasks.length - 3} more
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          
+          {/* Selected Day Tasks Panel */}
+          {selectedDate && (
+            <div className="border-t bg-card p-4 max-h-[40vh] overflow-auto">
+              <h3 className="font-semibold mb-2">
+                {selectedDate.toLocaleDateString('default', { weekday: 'long', month: 'short', day: 'numeric' })}
+              </h3>
+              {(() => {
+                const dateStr = `${selectedDate.getFullYear()}-${pad(selectedDate.getMonth() + 1)}-${pad(selectedDate.getDate())}`;
+                const dayTasks = tasks.filter(t => t.dueDate === dateStr);
+                if (dayTasks.length === 0) {
+                  return <p className="text-sm text-muted-foreground">No tasks for this day</p>;
+                }
+                return (
+                  <div className="space-y-2">
+                    {dayTasks.map(task => (
+                      <div
+                        key={task.id}
+                        onClick={() => onTaskClick(task)}
+                        className={`
+                          p-3 rounded-lg border cursor-pointer transition-all
+                          hover:bg-muted/50
+                          ${task.isCompleted ? 'opacity-60' : ''}
+                        `}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className={`font-medium ${task.isCompleted ? 'line-through' : ''}`}>
+                            {task.title}
+                          </span>
+                          <span 
+                            className="text-xs px-2 py-0.5 rounded"
+                            style={{
+                              background: task.priority === 'high' 
+                                ? 'var(--accent-2)' 
+                                : task.priority === 'medium' 
+                                  ? 'var(--accent)' 
+                                  : 'var(--muted)',
+                              color: task.priority === 'high' || task.priority === 'medium'
+                                ? 'var(--accent-foreground)'
+                                : 'var(--foreground)'
+                            }}
+                          >
+                            {task.priority}
+                          </span>
+                        </div>
+                        {task.dueTime && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            <Clock className="h-3 w-3 inline mr-1" />
+                            {formatTime12(task.dueTime)}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+        </div>
       )}
     </div>
   );

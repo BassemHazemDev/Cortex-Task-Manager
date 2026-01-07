@@ -43,6 +43,9 @@ export function AppProvider({ children }) {
 
   // Calendar expansion state (desktop only)
   const [calendarExpanded, setCalendarExpanded] = useState(false);
+  
+  // Mobile calendar expansion state (full-screen modal)
+  const [mobileCalendarExpanded, setMobileCalendarExpanded] = useState(false);
 
   // Available hours state
   const [availableHours, setAvailableHours] = useState({ start: '13:00', end: '22:00' });
@@ -141,6 +144,8 @@ export function AppProvider({ children }) {
     // Calendar
     calendarExpanded,
     setCalendarExpanded,
+    mobileCalendarExpanded,
+    setMobileCalendarExpanded,
   };
 
   return (

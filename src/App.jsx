@@ -73,6 +73,8 @@ function App() {
     setShowSettingsModal,
     calendarExpanded,
     setCalendarExpanded,
+    mobileCalendarExpanded,
+    setMobileCalendarExpanded,
   } = useApp();
 
   const isMobile = useIsMobile();
@@ -446,6 +448,9 @@ function App() {
                     onCreateDate={(date) => openTaskForm(date, { isNew: true })}
                     onToggleComplete={handleToggleTaskComplete}
                     expanded={calendarExpanded && !isMobile}
+                    isMobile={isMobile}
+                    mobileExpanded={mobileCalendarExpanded}
+                    onToggleMobileExpand={() => setMobileCalendarExpanded(v => !v)}
                     onTaskDrop={(taskId, newDate) => {
                       const dateStr = `${newDate.getFullYear()}-${pad(
                         newDate.getMonth() + 1
