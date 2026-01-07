@@ -39,7 +39,11 @@ import QuickTodosCard from "./components/sidebar/QuickTodosCard";
 import OverviewCard from "./components/sidebar/OverviewCard";
 import DailyTipCard from "./components/sidebar/DailyTipCard";
 
+import SplashScreen from "./components/pwa/SplashScreen";
+
 function App() {
+  const [showSplash, setShowSplash] = useState(true);
+  
   // Use the date refresh hook to handle midnight transitions
   const { getToday, now } = useDateRefresh();
 
@@ -400,6 +404,9 @@ function App() {
   // ===========================================================================
   return (
     <div className="min-h-screen serene-gradient">
+      <AnimatePresence>
+        {showSplash && <SplashScreen onComplete={() => setShowSplash(false)} />}
+      </AnimatePresence>
       <div className="container mx-auto px-4 py-6 max-w-7xl">
         <Header
           onOpenShortcuts={() => setShowShortcutsModal(true)}
