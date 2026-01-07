@@ -1,7 +1,7 @@
-import { useState, useEffect, memo, useMemo, useCallback } from 'react';
+import { useState, useEffect, memo, useMemo, useCallback, useRef } from 'react';
 import { useDateRefresh } from '../hooks/useDateRefresh';
 import { useLongPress } from '../hooks/useLongPress';
-import { ChevronLeft, ChevronRight, CheckCircle, Clock, Edit, Trash2, Maximize2, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CheckCircle, Clock, Edit, Trash2, Maximize2, X, Download } from 'lucide-react';
 import { isOverdue, formatTime12, pad } from '../utils/dateUtils';
 import { playCompleteSound } from '../utils/audioUtils';
 import { EmptyCalendarDay } from './common/EmptyState';
@@ -21,6 +21,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 import { ConfirmDialog } from './ui/ConfirmDialog';
+import { exportToPDF, exportToJPEG } from '../utils/calendarExportUtils';
+import ExportCalendarModal from './modals/ExportCalendarModal';
 
 // UI component mocks for demonstration; replace with your actual UI library imports in production.
 const Button = ({ children, ...props }) => <button {...props}>{children}</button>;
@@ -62,6 +64,25 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
     return () => observer.disconnect();
   }, []);
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const calendarRef = useRef(null);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+
+  const handleExportPDF = () => {
+    if (calendarRef.current) {
+      // Use a meaningful filename
+      const dateStr = currentMonth.toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
+      const filename = `Calendar_${viewMode}_${dateStr}`;
+      exportToPDF(calendarRef.current, filename);
+    }
+  };
+
+  const handleExportJPEG = () => {
+    if (calendarRef.current) {
+      const dateStr = currentMonth.toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
+      const filename = `Calendar_${viewMode}_${dateStr}`;
+      exportToJPEG(calendarRef.current, filename);
+    }
+  };
 
   const getDaysInMonth = (date) => {
     const year = date.getFullYear();
@@ -213,13 +234,21 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
   return (
     <div className="space-y-6 p-0 md:p-4 min-h-screen w-full overflow-hidden bg-transparent md:bg-card text-card-foreground rounded-2xl">
   {/* Main calendar grid displaying the current view and navigation controls */}
-      <Card style={{ background: 'var(--background)', color: 'var(--foreground)', maxWidth: '100%' }} className="rounded-xl shadow-md">
+      <Card ref={calendarRef} style={{ background: 'var(--background)', color: 'var(--foreground)', maxWidth: '100%' }} className="rounded-xl shadow-md">
         <CardHeader className="p-4 border-b">
           <div className="flex items-center justify-between">
             <CardTitle className="text-xl font-bold" style={{ color: 'var(--foreground)' }}>
               {getHeaderTitle()}
             </CardTitle>
             <div className="flex space-x-2 items-center">
+              <Button
+                className="p-2 rounded-md transition-all hover:bg-primary/10"
+                style={{ background: 'var(--card)', color: 'var(--foreground)' }}
+                onClick={() => setIsExportModalOpen(true)}
+                title="Export Calendar"
+              >
+                <Download className="h-5 w-5" />
+              </Button>
               {/* Mobile Expand Button */}
               {isMobile && (
                 <Button
@@ -334,7 +363,7 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
               return (
                 <div
                   key={`${date.toISOString()}-${index}`}
-                  className={`border rounded-lg cursor-pointer transition-all duration-200 hover:shadow-lg hover:-translate-y-1 calendar-card ${getCellHeight()} p-4`}
+                  className={`calendar-day-cell border rounded-lg cursor-pointer transition-all duration-200 hover:shadow-lg hover:-translate-y-1 calendar-card ${getCellHeight()} p-4`}
                   style={{ background: dayBg, borderColor: dayBorder, color: dayText, minWidth: 0, overflow: 'hidden' }}
                   onClick={() => onDateSelect(date)}
                   onDoubleClick={(e) => {
@@ -414,7 +443,7 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
                       
                       const taskContent = (
                         <div
-                          className={`text-xs p-1 rounded shadow-md transition-all duration-200 cursor-pointer hover:scale-[1.03] hover:shadow-lg hover:bg-[var(--accent)] hover:text-[var(--accent-foreground)] ${viewMode !== 'month' ? 'p-2' : ''}`}
+                          className={`calendar-task-card text-xs p-1 rounded shadow-md transition-all duration-200 cursor-pointer hover:scale-[1.03] hover:shadow-lg hover:bg-[var(--accent)] hover:text-[var(--accent-foreground)] ${viewMode !== 'month' ? 'p-2' : ''}`}
                           style={{ 
                             background: bg, 
                             color, 
@@ -470,7 +499,7 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
                           }}
                         >
                           {/* Task Title */}
-                          <span style={{ 
+                          <span className="calendar-task-title" style={{ 
                             wordBreak: 'break-word', 
                             whiteSpace: 'normal', 
                             overflow: 'hidden', 
@@ -790,6 +819,13 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
           onCancel={() => setDeleteConfirmTask(null)}
         />
       )}
+      
+      <ExportCalendarModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        onExportPDF={handleExportPDF}
+        onExportJPEG={handleExportJPEG}
+      />
       
       {/* Mobile Long-Press Context Menu */}
       {mobileMenuTask && (
