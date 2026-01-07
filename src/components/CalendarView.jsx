@@ -430,8 +430,8 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
                       }
                       
                       // Determine what details to show based on view mode (or when expanded)
-                      const showTime = viewMode === 'week' || viewMode === '3day' || expanded;
-                      const showPriority = viewMode === 'week' || viewMode === '3day' || expanded;
+                      const showTime = viewMode === '3day' || expanded;
+                      const showPriority = viewMode === '3day' || expanded;
                       const showDescription = viewMode === '3day' || expanded;
                       const showTags = viewMode === '3day' || expanded;
                       
@@ -441,8 +441,8 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
                         setMobileMenuOpen(true);
                       };
                       
-                      // Use detailed card styling for 3day, week, or expanded views
-                      const useDetailedCard = viewMode === '3day' || viewMode === 'week' || expanded;
+                      // Use detailed card styling for 3day or expanded views
+                      const useDetailedCard = viewMode === '3day' || expanded;
                       
                       const taskContent = (
                         <div
@@ -501,8 +501,8 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
                             // Keeping it standard.
                           }}
                         >
-                          {/* When expanded or in detailed views, use organized row layout */}
-                          {(expanded || viewMode === '3day' || viewMode === 'week') ? (
+                          {/* When expanded or in 3day view, use organized row layout */}
+                          {(expanded || viewMode === '3day') ? (
                             <>
                               {/* Row 1: Title + Time */}
                               <div style={{ 
@@ -608,7 +608,7 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
                                 textOverflow: 'ellipsis',
                                 maxWidth: '100%',
                                 display: 'block',
-                                fontWeight: viewMode !== 'month' ? 500 : 400
+                                fontWeight: (viewMode === 'month' || viewMode === 'week') ? 400 : 500
                               }}>{task.title}</span>
                               
                               {/* Hidden time for export - revealed by prepareCloneForExport */}
@@ -1088,7 +1088,7 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
                       >
                         {/* Row 1: Title + Time */}
                         <div className="flex items-center justify-between gap-2">
-                          <span className={`font-medium flex-1 ${task.isCompleted ? 'line-through' : ''}`}>
+                          <span className={`${(viewMode === 'month' || viewMode === 'week') ? 'font-normal' : 'font-medium'} flex-1 ${task.isCompleted ? 'line-through' : ''}`}>
                             {task.title}
                           </span>
                           {task.dueTime && (
@@ -1099,52 +1099,57 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
                           )}
                         </div>
                         
-                        {/* Row 2: Priority + Tags */}
-                        <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                          <span 
-                            className="text-xs px-2 py-0.5 rounded"
-                            style={{
-                              background: task.priority === 'high' 
-                                ? 'var(--accent-2)' 
-                                : task.priority === 'medium' 
-                                  ? 'var(--accent)' 
-                                  : 'var(--muted)',
-                              color: task.priority === 'high' || task.priority === 'medium'
-                                ? 'var(--accent-foreground)'
-                                : 'var(--foreground)'
-                            }}
-                          >
-                            {task.priority}
-                          </span>
-                          {Array.isArray(task.tags) && task.tags.length > 0 && (
-                            <>
-                              {task.tags.slice(0, 3).map(tag => (
-                                <span 
-                                  key={tag}
-                                  className="text-xs px-1.5 py-0.5 rounded"
-                                  style={{ 
-                                    background: 'var(--muted)',
-                                    color: 'var(--muted-foreground)'
-                                  }}
-                                >
-                                  {tag}
-                                </span>
-                              ))}
-                              {task.tags.length > 3 && (
-                                <span className="text-xs text-muted-foreground">
-                                  +{task.tags.length - 3}
-                                </span>
+                        {/* Show more details only if in detailed mode or expanded */}
+                        {(viewMode === '3day' || expanded) ? (
+                          <>
+                            {/* Row 2: Priority + Tags */}
+                            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                              <span 
+                                className="text-xs px-2 py-0.5 rounded"
+                                style={{
+                                  background: task.priority === 'high' 
+                                    ? 'var(--accent-2)' 
+                                    : task.priority === 'medium' 
+                                      ? 'var(--accent)' 
+                                      : 'var(--muted)',
+                                  color: task.priority === 'high' || task.priority === 'medium'
+                                    ? 'var(--accent-foreground)'
+                                    : 'var(--foreground)'
+                                }}
+                              >
+                                {task.priority}
+                              </span>
+                              {Array.isArray(task.tags) && task.tags.length > 0 && (
+                                <>
+                                  {task.tags.slice(0, 3).map(tag => (
+                                    <span 
+                                      key={tag}
+                                      className="text-xs px-1.5 py-0.5 rounded"
+                                      style={{ 
+                                        background: 'var(--muted)',
+                                        color: 'var(--muted-foreground)'
+                                      }}
+                                    >
+                                      {tag}
+                                    </span>
+                                  ))}
+                                  {task.tags.length > 3 && (
+                                    <span className="text-xs text-muted-foreground">
+                                      +{task.tags.length - 3}
+                                    </span>
+                                  )}
+                                </>
                               )}
-                            </>
-                          )}
-                        </div>
-                        
-                        {/* Description */}
-                        {task.description && (
-                          <p className="text-xs text-muted-foreground mt-1.5 line-clamp-2">
-                            {task.description}
-                          </p>
-                        )}
+                            </div>
+                            
+                            {/* Description */}
+                            {task.description && (
+                              <p className="text-xs text-muted-foreground mt-1.5 line-clamp-2">
+                                {task.description}
+                              </p>
+                            )}
+                          </>
+                        ) : null}
                       </div>
                     ))}
                   </div>
