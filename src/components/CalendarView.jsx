@@ -429,11 +429,11 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
                         opacity = isDark ? 0.9 : 1;
                       }
                       
-                      // Determine what details to show based on view mode
-                      const showTime = viewMode === 'week' || viewMode === '3day';
-                      const showPriority = viewMode === 'week' || viewMode === '3day';
-                      const showDescription = viewMode === '3day';
-                      const showTags = viewMode === '3day';
+                      // Determine what details to show based on view mode (or when expanded)
+                      const showTime = viewMode === 'week' || viewMode === '3day' || expanded;
+                      const showPriority = viewMode === 'week' || viewMode === '3day' || expanded;
+                      const showDescription = viewMode === '3day' || expanded;
+                      const showTags = viewMode === '3day' || expanded;
                       
                       // Long press handler for mobile
                       const handleLongPress = () => {
@@ -441,17 +441,20 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
                         setMobileMenuOpen(true);
                       };
                       
+                      // Use detailed card styling for 3day, week, or expanded views
+                      const useDetailedCard = viewMode === '3day' || viewMode === 'week' || expanded;
+                      
                       const taskContent = (
                         <div
-                          className={`calendar-task-card text-xs p-1 rounded shadow-md transition-all duration-200 cursor-pointer hover:scale-[1.03] hover:shadow-lg hover:bg-[var(--accent)] hover:text-[var(--accent-foreground)] ${viewMode !== 'month' ? 'p-2' : ''}`}
+                          className={`calendar-task-card text-xs p-1 rounded shadow-md transition-all duration-200 cursor-pointer hover:scale-[1.03] hover:shadow-lg hover:bg-[var(--accent)] hover:text-[var(--accent-foreground)] ${useDetailedCard ? 'p-2' : ''}`}
                           style={{ 
                             background: bg, 
                             color, 
                             textDecoration: task.isCompleted ? 'line-through' : 'none', 
                             display: 'flex', 
                             alignItems: 'flex-start', 
-                            gap: (viewMode !== 'month' || expanded) ? '0.25rem' : '0', 
-                            flexDirection: (viewMode !== 'month' || (expanded && task.title && task.title.length > 18)) ? 'column' : 'row', 
+                            gap: useDetailedCard ? '0.25rem' : '0', 
+                            flexDirection: useDetailedCard ? 'column' : 'row', 
                             opacity: draggedTaskId === task.id ? 0.5 : opacity, 
                             maxWidth: '100%', 
                             overflow: 'hidden',
@@ -498,91 +501,152 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
                             // Keeping it standard.
                           }}
                         >
-                          {/* Task Title */}
-                          <span className="calendar-task-title" style={{ 
-                            wordBreak: 'break-word', 
-                            whiteSpace: 'normal', 
-                            overflow: 'hidden', 
-                            textOverflow: 'ellipsis',
-                            maxWidth: '100%',
-                            display: 'block',
-                            fontWeight: viewMode !== 'month' ? 500 : 400
-                          }}>{task.title}</span>
-                          
-                          {/* Time - shown in week and 3day views */}
-                          {showTime && task.dueTime && (
-                            <span style={{ 
-                              fontWeight: 600, 
-                              color: 'var(--muted-foreground)', 
-                              fontSize: '0.85em',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '0.25rem'
-                            }}>
-                              <Clock style={{ width: '0.75rem', height: '0.75rem' }} />
-                              {formatTime12(task.dueTime)}
-                            </span>
-                          )}
-                          
-                          {/* Priority badge - shown in week and 3day views */}
-                          {showPriority && (
-                            <Badge 
-                              variant={task.priority === 'high' ? 'destructive' : task.priority === 'medium' ? 'default' : 'secondary'}
-                              style={{ 
-                                fontSize: '0.65em', 
-                                padding: '0.1rem 0.3rem',
-                                textTransform: 'capitalize'
-                              }}
-                            >
-                              {task.priority}
-                            </Badge>
-                          )}
-                          
-                          {/* Description - shown only in 3day view */}
-                          {showDescription && task.description && (
-                            <p style={{ 
-                              fontSize: '0.75em', 
-                              color: 'var(--muted-foreground)',
-                              marginTop: '0.25rem',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              display: '-webkit-box',
-                              WebkitLineClamp: 2,
-                              WebkitBoxOrient: 'vertical',
-                              textDecoration: 'none'
-                            }}>
-                              {task.description}
-                            </p>
-                          )}
-                          
-                          {/* Tags - shown only in 3day view */}
-                          {showTags && Array.isArray(task.tags) && task.tags.length > 0 && (
-                            <div style={{ 
-                              display: 'flex', 
-                              flexWrap: 'wrap', 
-                              gap: '0.15rem', 
-                              marginTop: '0.25rem' 
-                            }}>
-                              {task.tags.slice(0, 3).map(tag => (
-                                <span 
-                                  key={tag} 
+                          {/* When expanded or in detailed views, use organized row layout */}
+                          {(expanded || viewMode === '3day' || viewMode === 'week') ? (
+                            <>
+                              {/* Row 1: Title + Time */}
+                              <div style={{ 
+                                display: 'flex', 
+                                justifyContent: 'space-between', 
+                                alignItems: 'flex-start',
+                                gap: '0.5rem',
+                                width: '100%'
+                              }}>
+                                <span className="calendar-task-title" style={{ 
+                                  wordBreak: 'break-word', 
+                                  whiteSpace: 'normal', 
+                                  overflow: 'hidden', 
+                                  textOverflow: 'ellipsis',
+                                  flex: 1,
+                                  fontWeight: 500
+                                }}>{task.title}</span>
+                                {task.dueTime && (
+                                  <span style={{ 
+                                    fontWeight: 600, 
+                                    color: 'var(--muted-foreground)', 
+                                    fontSize: '0.85em',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.25rem',
+                                    flexShrink: 0
+                                  }}>
+                                    <Clock style={{ width: '0.75rem', height: '0.75rem' }} />
+                                    {formatTime12(task.dueTime)}
+                                  </span>
+                                )}
+                              </div>
+                              
+                              {/* Row 2: Priority + Tags */}
+                              <div style={{ 
+                                display: 'flex', 
+                                alignItems: 'center',
+                                gap: '0.5rem',
+                                flexWrap: 'wrap',
+                                width: '100%'
+                              }}>
+                                <Badge 
+                                  variant={task.priority === 'high' ? 'destructive' : task.priority === 'medium' ? 'default' : 'secondary'}
                                   style={{ 
-                                    fontSize: '0.6em', 
-                                    padding: '0.1rem 0.25rem', 
-                                    borderRadius: '0.25rem', 
-                                    background: 'var(--muted)',
-                                    color: 'var(--muted-foreground)'
+                                    fontSize: '0.65em', 
+                                    padding: '0.1rem 0.3rem',
+                                    textTransform: 'capitalize'
                                   }}
                                 >
-                                  {tag}
-                                </span>
-                              ))}
-                              {task.tags.length > 3 && (
-                                <span style={{ fontSize: '0.6em', color: 'var(--muted-foreground)' }}>
-                                  +{task.tags.length - 3}
+                                  {task.priority}
+                                </Badge>
+                                {Array.isArray(task.tags) && task.tags.length > 0 && (
+                                  <>
+                                    {task.tags.slice(0, 3).map(tag => (
+                                      <span 
+                                        key={tag} 
+                                        style={{ 
+                                          fontSize: '0.6em', 
+                                          padding: '0.1rem 0.25rem', 
+                                          borderRadius: '0.25rem', 
+                                          background: 'var(--muted)',
+                                          color: 'var(--muted-foreground)'
+                                        }}
+                                      >
+                                        {tag}
+                                      </span>
+                                    ))}
+                                    {task.tags.length > 3 && (
+                                      <span style={{ fontSize: '0.6em', color: 'var(--muted-foreground)' }}>
+                                        +{task.tags.length - 3}
+                                      </span>
+                                    )}
+                                  </>
+                                )}
+                              </div>
+                              
+                              {/* Description */}
+                              {task.description && (
+                                <p style={{ 
+                                  fontSize: '0.75em', 
+                                  color: 'var(--muted-foreground)',
+                                  marginTop: '0.25rem',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  display: '-webkit-box',
+                                  WebkitLineClamp: 2,
+                                  WebkitBoxOrient: 'vertical',
+                                  textDecoration: 'none',
+                                  width: '100%'
+                                }}>
+                                  {task.description}
+                                </p>
+                              )}
+                            </>
+                          ) : (
+                            <>
+                              {/* Default compact layout for non-expanded views */}
+                              {/* Task Title */}
+                              <span className="calendar-task-title" style={{ 
+                                wordBreak: 'break-word', 
+                                whiteSpace: 'normal', 
+                                overflow: 'hidden', 
+                                textOverflow: 'ellipsis',
+                                maxWidth: '100%',
+                                display: 'block',
+                                fontWeight: viewMode !== 'month' ? 500 : 400
+                              }}>{task.title}</span>
+                              
+                              {/* Hidden time for export - revealed by prepareCloneForExport */}
+                              {task.dueTime && (
+                                <span className="export-task-time" style={{ display: 'none' }}>
+                                  {formatTime12(task.dueTime)}
                                 </span>
                               )}
-                            </div>
+                              
+                              {/* Time - shown in week view */}
+                              {showTime && task.dueTime && (
+                                <span style={{ 
+                                  fontWeight: 600, 
+                                  color: 'var(--muted-foreground)', 
+                                  fontSize: '0.85em',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '0.25rem'
+                                }}>
+                                  <Clock style={{ width: '0.75rem', height: '0.75rem' }} />
+                                  {formatTime12(task.dueTime)}
+                                </span>
+                              )}
+                              
+                              {/* Priority badge - shown in week view */}
+                              {showPriority && (
+                                <Badge 
+                                  variant={task.priority === 'high' ? 'destructive' : task.priority === 'medium' ? 'default' : 'secondary'}
+                                  style={{ 
+                                    fontSize: '0.65em', 
+                                    padding: '0.1rem 0.3rem',
+                                    textTransform: 'capitalize'
+                                  }}
+                                >
+                                  {task.priority}
+                                </Badge>
+                              )}
+                            </>
                           )}
                         </div>
                       );
@@ -924,15 +988,14 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
             </div>
             
             {/* Calendar Days */}
-            <div className="grid grid-cols-7 gap-1">
+            <div key={`mobile-grid-${currentMonth.getFullYear()}-${currentMonth.getMonth()}`} className="grid grid-cols-7 gap-1">
               {getDaysInMonth(currentMonth).map((date, index) => {
                 if (!date) {
                   return <div key={`empty-${index}`} className="aspect-square" />;
                 }
                 
                 const dayNum = date.getDate();
-                const dateStr = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(dayNum)}`;
-                const dayTasks = tasks.filter(t => t.dueDate === dateStr && !t.isCompleted);
+                const dayTasks = getTasksForDate(date);
                 const isTodayDate = now.getDate() === dayNum && 
                                now.getMonth() === date.getMonth() && 
                                now.getFullYear() === date.getFullYear();
@@ -943,7 +1006,7 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
                 
                 return (
                   <div
-                    key={`day-${dayNum}-${index}`}
+                    key={`day-${date.getFullYear()}-${date.getMonth()}-${dayNum}-${index}`}
                     onClick={() => onDateSelect(date)}
                     className={`
                       min-h-[80px] p-1 rounded-lg border transition-all cursor-pointer
@@ -1023,10 +1086,21 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
                           ${task.isCompleted ? 'opacity-60' : ''}
                         `}
                       >
-                        <div className="flex items-center justify-between">
-                          <span className={`font-medium ${task.isCompleted ? 'line-through' : ''}`}>
+                        {/* Row 1: Title + Time */}
+                        <div className="flex items-center justify-between gap-2">
+                          <span className={`font-medium flex-1 ${task.isCompleted ? 'line-through' : ''}`}>
                             {task.title}
                           </span>
+                          {task.dueTime && (
+                            <span className="text-xs text-muted-foreground flex items-center gap-1 flex-shrink-0">
+                              <Clock className="h-3 w-3" />
+                              {formatTime12(task.dueTime)}
+                            </span>
+                          )}
+                        </div>
+                        
+                        {/* Row 2: Priority + Tags */}
+                        <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                           <span 
                             className="text-xs px-2 py-0.5 rounded"
                             style={{
@@ -1042,11 +1116,33 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
                           >
                             {task.priority}
                           </span>
+                          {Array.isArray(task.tags) && task.tags.length > 0 && (
+                            <>
+                              {task.tags.slice(0, 3).map(tag => (
+                                <span 
+                                  key={tag}
+                                  className="text-xs px-1.5 py-0.5 rounded"
+                                  style={{ 
+                                    background: 'var(--muted)',
+                                    color: 'var(--muted-foreground)'
+                                  }}
+                                >
+                                  {tag}
+                                </span>
+                              ))}
+                              {task.tags.length > 3 && (
+                                <span className="text-xs text-muted-foreground">
+                                  +{task.tags.length - 3}
+                                </span>
+                              )}
+                            </>
+                          )}
                         </div>
-                        {task.dueTime && (
-                          <p className="text-xs text-muted-foreground mt-1">
-                            <Clock className="h-3 w-3 inline mr-1" />
-                            {formatTime12(task.dueTime)}
+                        
+                        {/* Description */}
+                        {task.description && (
+                          <p className="text-xs text-muted-foreground mt-1.5 line-clamp-2">
+                            {task.description}
                           </p>
                         )}
                       </div>

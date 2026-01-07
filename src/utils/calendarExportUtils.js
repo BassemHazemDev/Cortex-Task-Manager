@@ -128,33 +128,86 @@ const prepareCloneForExport = (clonedDoc) => {
     }
 
     // 3. Fix Layout & Text Clipping Issues
-    // We strictly force expanding style on the cloned nodes so they fit all content
+    // Export at current viewport width - use smaller fonts and allow vertical text wrapping
+    // This prevents the screen from flashing/resizing during export
 
-    // Day Cells: Remove overflow hidden and constraints
+    // Day Cells: Allow content to expand vertically
     const dayCells = clonedDoc.querySelectorAll('.calendar-day-cell');
     dayCells.forEach(cell => {
         cell.style.setProperty('overflow', 'visible', 'important');
         cell.style.setProperty('height', 'auto', 'important');
-        cell.style.setProperty('display', 'block', 'important'); // Ensure it stacks if needed
+        cell.style.setProperty('min-height', '100px', 'important');
+        cell.style.setProperty('padding', '4px', 'important');
     });
 
-    // Task Cards: Allow expansion
+    // Calendar card content: Ensure task containers are visible
+    const cardContents = clonedDoc.querySelectorAll('.calendar-card-content');
+    cardContents.forEach(content => {
+        content.style.setProperty('overflow', 'visible', 'important');
+        content.style.setProperty('display', 'block', 'important');
+        content.style.setProperty('max-height', 'none', 'important');
+    });
+
+    // Task Cards: Smaller fonts that fit in narrow cells, text wraps vertically
     const taskCards = clonedDoc.querySelectorAll('.calendar-task-card');
     taskCards.forEach(card => {
         card.style.setProperty('height', 'auto', 'important');
         card.style.setProperty('max-height', 'none', 'important');
         card.style.setProperty('overflow', 'visible', 'important');
         card.style.setProperty('white-space', 'normal', 'important');
-        // Padding for bottom letters (g, j, y, etc)
-        card.style.paddingBottom = '6px';
+        card.style.setProperty('word-break', 'break-word', 'important');
+        card.style.setProperty('padding', '2px 4px', 'important');
+        card.style.setProperty('margin-bottom', '2px', 'important');
+        card.style.setProperty('font-size', '8px', 'important');
+        card.style.setProperty('line-height', '1.2', 'important');
     });
 
-    // Task Titles: Ensure word wrap
+    // Task Titles: Smaller font, allow wrapping
     const taskTitles = clonedDoc.querySelectorAll('.calendar-task-title');
     taskTitles.forEach(title => {
         title.style.setProperty('overflow', 'visible', 'important');
         title.style.setProperty('white-space', 'normal', 'important');
-        title.style.lineHeight = '1.3';
+        title.style.setProperty('word-break', 'break-word', 'important');
+        title.style.setProperty('line-height', '1.2', 'important');
+        title.style.setProperty('font-size', '8px', 'important');
+        title.style.setProperty('font-weight', '500', 'important');
+    });
+
+    // 4. Reveal hidden export-task-time elements (smaller font)
+    const exportTimes = clonedDoc.querySelectorAll('.export-task-time');
+    exportTimes.forEach(time => {
+        time.style.setProperty('display', 'inline', 'important');
+        time.style.setProperty('font-size', '7px', 'important');
+        time.style.setProperty('margin-left', '4px', 'important');
+        time.style.setProperty('opacity', '0.9', 'important');
+        time.style.setProperty('color', 'inherit', 'important');
+    });
+
+    // 5. Convert computed oklch colors to RGB for all elements (production fix)
+    // html2canvas reads computed styles which may contain oklch from CSS variables
+    const allElements = clonedDoc.querySelectorAll('*');
+    const colorProps = ['color', 'background-color', 'border-color', 'outline-color'];
+
+    allElements.forEach(el => {
+        try {
+            const computed = window.getComputedStyle(el);
+            colorProps.forEach(prop => {
+                const value = computed.getPropertyValue(prop);
+                if (value && (value.includes('oklch') || value.includes('color('))) {
+                    const resolved = resolveColor(value);
+                    el.style.setProperty(prop, resolved, 'important');
+                }
+            });
+
+            // Also handle background (which might include gradients with oklch)
+            const bg = computed.getPropertyValue('background');
+            if (bg && bg.includes('oklch')) {
+                const resolved = replaceOklchInText(bg);
+                el.style.setProperty('background', resolved, 'important');
+            }
+        } catch (err) {
+            // Skip elements where computed styles can't be read
+        }
     });
 };
 
@@ -177,16 +230,14 @@ export const exportToPDF = async (element, filename = 'calendar-export') => {
     try {
         await waitForImages(element);
 
+        // Export at current viewport width - clone styling handles font/cell adjustments
         const canvas = await html2canvas(element, {
             scale: 2,
             useCORS: true,
             logging: false,
             backgroundColor: '#ffffff',
             onclone: prepareCloneForExport,
-            ignoreElements: (element) => {
-                // Optional: Ignore elements specifically problematic if needed
-                return false;
-            }
+            ignoreElements: (el) => false
         });
 
         const imgData = canvas.toDataURL('image/jpeg', 1.0);
@@ -213,6 +264,7 @@ export const exportToJPEG = async (element, filename = 'calendar-export') => {
     try {
         await waitForImages(element);
 
+        // Export at current viewport width - clone styling handles font/cell adjustments
         const canvas = await html2canvas(element, {
             scale: 2,
             useCORS: true,
