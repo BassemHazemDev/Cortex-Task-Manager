@@ -1,8 +1,10 @@
 import { useState, useEffect, memo, useMemo, useCallback } from 'react';
 import { useDateRefresh } from '../hooks/useDateRefresh';
+import { useLongPress } from '../hooks/useLongPress';
 import { ChevronLeft, ChevronRight, CheckCircle, Clock, Edit, Trash2 } from 'lucide-react';
 import { isOverdue, formatTime12, pad } from '../utils/dateUtils';
 import { playCompleteSound } from '../utils/audioUtils';
+import { EmptyCalendarDay } from './common/EmptyState';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -10,6 +12,13 @@ import {
   ContextMenuTrigger,
   ContextMenuSeparator,
 } from "@/components/ui/context-menu";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 import { ConfirmDialog } from './ui/ConfirmDialog';
 
@@ -32,6 +41,9 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
   // Drag-and-drop state for dragging task
   const [draggedTaskId, setDraggedTaskId] = useState(null);
   const [deleteConfirmTask, setDeleteConfirmTask] = useState(null);
+  // State for mobile long-press context menu
+  const [mobileMenuTask, setMobileMenuTask] = useState(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   // Tracks the current theme mode (dark or light) for initial render reliability
   const [isDark, setIsDark] = useState(() => {
     if (typeof document !== 'undefined') {
@@ -376,52 +388,169 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
                         color = isDark ? '#fee2e2' : '#7f1d1d';
                         opacity = isDark ? 0.9 : 1;
                       }
-                      return (
-                        <ContextMenu key={task.id}>
-                          <ContextMenuTrigger asChild>
-                            <div
-                              className={`text-xs p-1 rounded shadow-md transition-all duration-200 cursor-pointer hover:scale-[1.03] hover:shadow-lg hover:bg-[var(--accent)] hover:text-[var(--accent-foreground)]`}
+                      
+                      // Determine what details to show based on view mode
+                      const showTime = viewMode === 'week' || viewMode === '3day';
+                      const showPriority = viewMode === 'week' || viewMode === '3day';
+                      const showDescription = viewMode === '3day';
+                      const showTags = viewMode === '3day';
+                      
+                      // Long press handler for mobile
+                      const handleLongPress = () => {
+                        setMobileMenuTask(task);
+                        setMobileMenuOpen(true);
+                      };
+                      
+                      const taskContent = (
+                        <div
+                          className={`text-xs p-1 rounded shadow-md transition-all duration-200 cursor-pointer hover:scale-[1.03] hover:shadow-lg hover:bg-[var(--accent)] hover:text-[var(--accent-foreground)] ${viewMode !== 'month' ? 'p-2' : ''}`}
+                          style={{ 
+                            background: bg, 
+                            color, 
+                            textDecoration: task.isCompleted ? 'line-through' : 'none', 
+                            display: 'flex', 
+                            alignItems: 'flex-start', 
+                            gap: (viewMode !== 'month' || expanded) ? '0.25rem' : '0', 
+                            flexDirection: (viewMode !== 'month' || (expanded && task.title && task.title.length > 18)) ? 'column' : 'row', 
+                            opacity: draggedTaskId === task.id ? 0.5 : opacity, 
+                            maxWidth: '100%', 
+                            overflow: 'hidden',
+                            wordBreak: 'break-word',
+                            overflowWrap: 'break-word'
+                          }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onTaskClick(task);
+                          }}
+                          draggable
+                          onDragStart={(e) => handleDragStart(e, task.id)}
+                          onDragEnd={handleDragEnd}
+                          onTouchStart={(e) => {
+                            // Start long press detection
+                            const timer = setTimeout(() => {
+                              handleLongPress();
+                            }, 500);
+                            e.target._longPressTimer = timer;
+                          }}
+                          onTouchMove={(e) => {
+                            // Cancel long press if user moves finger
+                            if (e.target._longPressTimer) {
+                              clearTimeout(e.target._longPressTimer);
+                              e.target._longPressTimer = null;
+                            }
+                          }}
+                          onTouchEnd={(e) => {
+                            // Clear the timer on touch end
+                            if (e.target._longPressTimer) {
+                              clearTimeout(e.target._longPressTimer);
+                              e.target._longPressTimer = null;
+                            }
+                          }}
+                          onTouchCancel={(e) => {
+                            if (e.target._longPressTimer) {
+                              clearTimeout(e.target._longPressTimer);
+                              e.target._longPressTimer = null;
+                            }
+                          }}
+                          onContextMenu={(e) => {
+                            // Prevent native context menu if we want strictly custom, 
+                            // though Radix usually handles this on the Trigger. 
+                            // Keeping it standard.
+                          }}
+                        >
+                          {/* Task Title */}
+                          <span style={{ 
+                            wordBreak: 'break-word', 
+                            whiteSpace: 'normal', 
+                            overflow: 'hidden', 
+                            textOverflow: 'ellipsis',
+                            maxWidth: '100%',
+                            display: 'block',
+                            fontWeight: viewMode !== 'month' ? 500 : 400
+                          }}>{task.title}</span>
+                          
+                          {/* Time - shown in week and 3day views */}
+                          {showTime && task.dueTime && (
+                            <span style={{ 
+                              fontWeight: 600, 
+                              color: 'var(--muted-foreground)', 
+                              fontSize: '0.85em',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.25rem'
+                            }}>
+                              <Clock style={{ width: '0.75rem', height: '0.75rem' }} />
+                              {formatTime12(task.dueTime)}
+                            </span>
+                          )}
+                          
+                          {/* Priority badge - shown in week and 3day views */}
+                          {showPriority && (
+                            <Badge 
+                              variant={task.priority === 'high' ? 'destructive' : task.priority === 'medium' ? 'default' : 'secondary'}
                               style={{ 
-                                background: bg, 
-                                color, 
-                                textDecoration: task.isCompleted ? 'line-through' : 'none', 
-                                display: 'flex', 
-                                alignItems: 'flex-start', 
-                                gap: expanded ? '0.15rem' : '0', 
-                                flexDirection: expanded && task.title && task.title.length > 18 ? 'column' : 'row', 
-                                opacity: draggedTaskId === task.id ? 0.5 : opacity, 
-                                maxWidth: '100%', 
-                                overflow: 'hidden',
-                                wordBreak: 'break-word',
-                                overflowWrap: 'break-word'
-                              }}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onTaskClick(task);
-                              }}
-                              draggable
-                              onDragStart={(e) => handleDragStart(e, task.id)}
-                              onDragEnd={handleDragEnd}
-                              onContextMenu={(e) => {
-                                // Prevent native context menu if we want strictly custom, 
-                                // though Radix usually handles this on the Trigger. 
-                                // Keeping it standard.
+                                fontSize: '0.65em', 
+                                padding: '0.1rem 0.3rem',
+                                textTransform: 'capitalize'
                               }}
                             >
-                              <span style={{ 
-                                wordBreak: 'break-word', 
-                                whiteSpace: 'normal', 
-                                overflow: 'hidden', 
-                                textOverflow: 'ellipsis',
-                                maxWidth: '100%',
-                                display: 'block'
-                              }}>{task.title}</span>
-                              {expanded && task.dueTime && (
-                                <span style={{ fontWeight: 600, color: 'var(--muted-foreground)', fontSize: '0.95em', marginLeft: expanded && task.title && task.title.length > 18 ? 0 : '0.25rem', marginTop: expanded && task.title && task.title.length > 18 ? '2px' : 0 }}>
-                                  {formatTime12(task.dueTime)}
+                              {task.priority}
+                            </Badge>
+                          )}
+                          
+                          {/* Description - shown only in 3day view */}
+                          {showDescription && task.description && (
+                            <p style={{ 
+                              fontSize: '0.75em', 
+                              color: 'var(--muted-foreground)',
+                              marginTop: '0.25rem',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              display: '-webkit-box',
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: 'vertical',
+                              textDecoration: 'none'
+                            }}>
+                              {task.description}
+                            </p>
+                          )}
+                          
+                          {/* Tags - shown only in 3day view */}
+                          {showTags && Array.isArray(task.tags) && task.tags.length > 0 && (
+                            <div style={{ 
+                              display: 'flex', 
+                              flexWrap: 'wrap', 
+                              gap: '0.15rem', 
+                              marginTop: '0.25rem' 
+                            }}>
+                              {task.tags.slice(0, 3).map(tag => (
+                                <span 
+                                  key={tag} 
+                                  style={{ 
+                                    fontSize: '0.6em', 
+                                    padding: '0.1rem 0.25rem', 
+                                    borderRadius: '0.25rem', 
+                                    background: 'var(--muted)',
+                                    color: 'var(--muted-foreground)'
+                                  }}
+                                >
+                                  {tag}
+                                </span>
+                              ))}
+                              {task.tags.length > 3 && (
+                                <span style={{ fontSize: '0.6em', color: 'var(--muted-foreground)' }}>
+                                  +{task.tags.length - 3}
                                 </span>
                               )}
                             </div>
+                          )}
+                        </div>
+                      );
+                      
+                      return (
+                        <ContextMenu key={task.id}>
+                          <ContextMenuTrigger asChild>
+                            {taskContent}
                           </ContextMenuTrigger>
                           <ContextMenuContent className="w-48">
                             <ContextMenuItem onSelect={() => {
@@ -512,7 +641,11 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
               </div>
             )}
             {selectedDayTasks.length === 0 ? (
-              <p className="text-center py-4" style={{ color: 'var(--muted-foreground)' }}>No tasks scheduled for this date.</p>
+              <EmptyCalendarDay onAddTask={() => {
+                if (typeof onCreateDate === 'function') {
+                  onCreateDate(selectedDate);
+                }
+              }} />
             ) : (
               <div className="space-y-3">
                 {[...selectedDayTasks].sort((a, b) => {
@@ -645,6 +778,59 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
           }}
           onCancel={() => setDeleteConfirmTask(null)}
         />
+      )}
+      
+      {/* Mobile Long-Press Context Menu */}
+      {mobileMenuTask && (
+        <DropdownMenu open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+          <DropdownMenuTrigger asChild>
+            <div style={{ position: 'fixed', top: '50%', left: '50%', width: 0, height: 0 }} />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent 
+            className="w-56" 
+            style={{ 
+              position: 'fixed', 
+              top: '50%', 
+              left: '50%', 
+              transform: 'translate(-50%, -50%)',
+              zIndex: 9999
+            }}
+          >
+            <div className="px-2 py-1.5 text-sm font-semibold truncate" style={{ maxWidth: '200px' }}>
+              {mobileMenuTask.title}
+            </div>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => {
+              if (onEditTask) onEditTask(mobileMenuTask);
+              setMobileMenuOpen(false);
+              setMobileMenuTask(null);
+            }}>
+              <Edit className="h-4 w-4 mr-2" />
+              Edit Task
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => {
+              if (!mobileMenuTask.isCompleted) playCompleteSound();
+              onToggleComplete(mobileMenuTask.id);
+              setMobileMenuOpen(false);
+              setMobileMenuTask(null);
+            }}>
+              <CheckCircle className="h-4 w-4 mr-2" />
+              {mobileMenuTask.isCompleted ? 'Mark Pending' : 'Complete'}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem 
+              className="text-destructive focus:text-destructive"
+              onClick={() => {
+                setDeleteConfirmTask(mobileMenuTask);
+                setMobileMenuOpen(false);
+                setMobileMenuTask(null);
+              }}
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete Task
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       )}
     </div>
   );

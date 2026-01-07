@@ -5,6 +5,7 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import dailyTips from "./lib/dailyTips";
 import { useDateRefresh } from "./hooks/useDateRefresh";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
@@ -424,54 +425,87 @@ function App() {
             }
             style={{ transition: "all 0.5s cubic-bezier(0.4,0,0.2,1)" }}
           >
-            {currentView === "calendar" && (
-              <div
-                className={`calendar-container ${
-                  calendarExpanded && !isMobile ? "expanded" : ""
-                }`}
-                style={{ transition: "all 0.5s cubic-bezier(0.4,0,0.2,1)" }}
-              >
-                <CalendarView
-                  selectedDate={selectedDate}
-                  onDateSelect={setSelectedDate}
-                  tasks={tasks}
-                  onTaskClick={openTaskForm}
-                  onCreateDate={(date) => openTaskForm(date, { isNew: true })}
-                  onToggleComplete={handleToggleTaskComplete}
-                  expanded={calendarExpanded && !isMobile}
-                  onTaskDrop={(taskId, newDate) => {
-                    const dateStr = `${newDate.getFullYear()}-${pad(
-                      newDate.getMonth() + 1
-                    )}-${pad(newDate.getDate())}`;
-                    handleUpdateTask(taskId, { dueDate: dateStr });
-                  }}
-                  onEditTask={editTaskDirectly}
-                  onDeleteTask={handleDeleteTask}
-                />
-              </div>
-            )}
+            <AnimatePresence mode="wait">
+              {currentView === "calendar" && (
+                <motion.div
+                  key="calendar"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ duration: 0.3, ease: "easeOut" }}
+                  className={`calendar-container ${
+                    calendarExpanded && !isMobile ? "expanded" : ""
+                  }`}
+                  style={{ transition: "all 0.5s cubic-bezier(0.4,0,0.2,1)" }}
+                >
+                  <CalendarView
+                    selectedDate={selectedDate}
+                    onDateSelect={setSelectedDate}
+                    tasks={tasks}
+                    onTaskClick={openTaskForm}
+                    onCreateDate={(date) => openTaskForm(date, { isNew: true })}
+                    onToggleComplete={handleToggleTaskComplete}
+                    expanded={calendarExpanded && !isMobile}
+                    onTaskDrop={(taskId, newDate) => {
+                      const dateStr = `${newDate.getFullYear()}-${pad(
+                        newDate.getMonth() + 1
+                      )}-${pad(newDate.getDate())}`;
+                      handleUpdateTask(taskId, { dueDate: dateStr });
+                    }}
+                    onEditTask={editTaskDirectly}
+                    onDeleteTask={handleDeleteTask}
+                  />
+                </motion.div>
+              )}
 
-            {currentView === "tasks" && (
-              <TaskList
-                tasks={tasks}
-                onTaskClick={openTaskForm}
-                onEditTask={editTaskDirectly}
-                onToggleComplete={handleToggleTaskComplete}
-                onDeleteTask={handleDeleteTask}
-                onToggleSubtask={handleToggleSubtaskComplete}
-              />
-            )}
+              {currentView === "tasks" && (
+                <motion.div
+                  key="tasks"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ duration: 0.3, ease: "easeOut" }}
+                >
+                  <TaskList
+                    tasks={tasks}
+                    onTaskClick={openTaskForm}
+                    onEditTask={editTaskDirectly}
+                    onToggleComplete={handleToggleTaskComplete}
+                    onDeleteTask={handleDeleteTask}
+                    onToggleSubtask={handleToggleSubtaskComplete}
+                  />
+                </motion.div>
+              )}
 
-            {currentView === "scheduler" && (
-              <SmartScheduler
-                tasks={tasks}
-                onUpdateTask={handleUpdateTask}
-                onShowNotification={showNotification}
-                availableHours={availableHours}
-              />
-            )}
+              {currentView === "scheduler" && (
+                <motion.div
+                  key="scheduler"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ duration: 0.3, ease: "easeOut" }}
+                >
+                  <SmartScheduler
+                    tasks={tasks}
+                    onUpdateTask={handleUpdateTask}
+                    onShowNotification={showNotification}
+                    availableHours={availableHours}
+                  />
+                </motion.div>
+              )}
 
-            {currentView === "statistics" && <StatisticsView />}
+              {currentView === "statistics" && (
+                <motion.div
+                  key="statistics"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ duration: 0.3, ease: "easeOut" }}
+                >
+                  <StatisticsView />
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
           <div
