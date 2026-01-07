@@ -405,7 +405,7 @@ function App() {
   return (
     <div className="min-h-screen serene-gradient">
       <AnimatePresence>
-        {showSplash && <SplashScreen onComplete={() => setShowSplash(false)} />}
+        {!isMobile && showSplash && <SplashScreen onComplete={() => setShowSplash(false)} />}
       </AnimatePresence>
       <div className="container mx-auto px-4 py-6 max-w-7xl">
         <Header

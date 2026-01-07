@@ -4,7 +4,7 @@
   "description": "Stay organized, stay calm. Cortex Task Manager helps you manage tasks, deadlines, and schedules with ease.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
+  "background_color": "#006d77",
   "theme_color": "#006d77",
   "orientation": "portrait-primary",
   "scope": "/",
