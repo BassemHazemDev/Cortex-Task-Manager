@@ -70,13 +70,13 @@
       "purpose": "any"
     },
     {
-      "src": "/icon-solid-512.png",
+      "src": "/cortex2mob.png",
       "sizes": "192x192 512x512",
       "type": "image/png",
       "purpose": "maskable"
     },
     {
-      "src": "/icon-solid-512.png",
+      "src": "/cortex2mob.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
