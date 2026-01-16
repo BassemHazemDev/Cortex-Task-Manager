@@ -199,7 +199,7 @@ const Header = ({
           </div>
           <div>
             <h1 className="text-3xl font-bold text-foreground tracking-tight">
-              Cortex Task Manager
+              Cortex
             </h1>
             <p className="text-muted-foreground text-lg">
               Stay organized, stay calm ✨

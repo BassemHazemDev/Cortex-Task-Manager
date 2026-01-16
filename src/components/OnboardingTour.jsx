@@ -17,7 +17,7 @@ import { useApp } from '../contexts/AppContext';
 const tourSteps = [
   {
     target: '.header-logo',
-    content: 'Welcome to Cortex Task Manager! 🎉 Let me give you a quick tour of the key features.',
+    content: 'Welcome to Cortex your Task Manager! 🎉 Let me give you a quick tour of the key features.',
     placement: 'bottom',
     disableBeacon: true,
     title: 'Welcome!',

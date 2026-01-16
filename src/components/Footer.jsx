@@ -14,7 +14,7 @@ const Footer = () => (
       <span className="text-sm font-semibold tracking-wide opacity-80 flex items-center gap-2">
         <img src="/cortex1.png" alt="Cortex Logo" className="h-4 block dark:hidden" />
         <img src="/cortex2.png" alt="Cortex Logo Dark" className="h-4 hidden dark:block" />
-        {new Date().getFullYear()} Cortex Task Manager
+        {new Date().getFullYear()} Cortex
       </span>
       <div className="flex items-center gap-4">
         <a

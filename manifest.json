@@ -1,7 +1,7 @@
 {
-  "name": "Cortex Task Manager",
+  "name": "Cortex",
   "short_name": "Cortex",
-  "description": "Stay organized, stay calm. Cortex Task Manager helps you manage tasks, deadlines, and schedules with ease.",
+  "description": "Stay organized, stay calm. Cortex helps you manage tasks, deadlines, and schedules with ease.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#006d77",
