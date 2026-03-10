@@ -1,0 +1,33 @@
+{
+  "version": "2.0",
+  "exportDate": "2026-03-09T00:00:00.000Z",
+  "tasks": [
+    {
+      "title": "Imported Task A",
+      "description": "from backup",
+      "descriptionType": "text",
+      "dueDate": "2026-03-20",
+      "dueTime": "10:00",
+      "priority": "high",
+      "estimatedDuration": 60,
+      "isCompleted": false,
+      "assignedSlot": null,
+      "tags": ["task"],
+      "repeatFrequency": "none",
+      "subtasks": []
+    }
+  ],
+  "todos": [
+    {
+      "title": "Imported Todo A",
+      "description": "from backup",
+      "priority": "medium",
+      "isCompleted": false,
+      "order": 0
+    }
+  ],
+  "settings": {
+    "theme": "dark",
+    "availableHours": { "start": "09:00", "end": "18:00" }
+  }
+}

@@ -15,7 +15,7 @@ const app: Application = express();
 
 app.use(helmet());
 app.use(cors({ origin: env.CORS_ORIGIN, credentials: true }));
-app.use(mongoSanitize());
+// app.use(mongoSanitize()); // Disabled due to Express 5 compatibility
 
 const limiter = rateLimit({
   max: 100,

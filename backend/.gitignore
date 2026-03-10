@@ -1,5 +1,20 @@
 node_modules/
 dist/
 .env
+.env.*
+!.env.example
 *.log
 .DS_Store
+Thumbs.db
+test_reports
+coverage
+
+# TypeScript
+*.tsbuildinfo
+
+# ESLint
+.eslintcache
+
+# Editors
+.vscode/
+.idea/

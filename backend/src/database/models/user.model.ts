@@ -78,16 +78,14 @@ const userSchema = new Schema<IUser, IUserModel>(
   }
 );
 
-userSchema.pre('save', async function (next: any) {
-  if (!this.isModified('password')) return next();
+userSchema.pre('save', async function () {
+  if (!this.isModified('password')) return;
   this.password = await bcrypt.hash(this.password, 12);
-  next();
 });
 
-userSchema.pre('save', function (next: any) {
-  if (!this.isModified('password') || this.isNew) return next();
+userSchema.pre('save', async function () {
+  if (!this.isModified('password') || this.isNew) return;
   this.passwordChangedAt = new Date(Date.now() - 1000);
-  next();
 });
 
 userSchema.methods.comparePassword = async function (

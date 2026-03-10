@@ -51,16 +51,20 @@ export const errorHandler = (
 
   if (err instanceof AppError) {
     error.statusCode = err.statusCode;
+    error.status = err.status;
     error.message = err.message;
   }
 
-  if (env.NODE_ENV === 'development') {
+  const statusCode = error.statusCode || 500;
+  const status = error.status || (statusCode.toString().startsWith('4') ? 'fail' : 'error');
+
+  if (env.NODE_ENV === 'development' || env.NODE_ENV === 'test') {
     error.stack = err.stack;
   }
 
-  res.status(error.statusCode || 500).json({
-    status: error.status,
+  res.status(statusCode).json({
+    status: status,
     message: error.message,
-    ...(env.NODE_ENV === 'development' && { stack: error.stack }),
+    ...(error.stack && { stack: error.stack }),
   });
 };
