@@ -1,30 +1,20 @@
-/**
- * @module TaskContext
- * 
- * Provides task-related state and operations including:
- * - Tasks array state
- * - CRUD operations (add, update, delete)
- * - Task completion toggle
- * - Time conflict detection
- * - Auto-save to IndexedDB
- * 
- * Note: This context handles data only. Notifications should be
- * displayed by the consuming components using AppContext.
- */
-
-import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-import { loadTasks, loadTasksAsync, saveTasks, initStorage } from '../utils/storage';
+import { createContext, useContext, useCallback, useMemo } from 'react';
+import {
+  useTasksQuery,
+  useCreateTaskMutation,
+  useUpdateTaskMutation,
+  useDeleteTaskMutation,
+  useToggleTaskCompleteMutation,
+  useAddSubtaskMutation,
+  useUpdateSubtaskMutation,
+  useDeleteSubtaskMutation,
+  useToggleSubtaskCompleteMutation,
+} from '../hooks/queries/taskQueries';
 import { playCompleteSound } from '../utils/audioUtils';
-import { useCrossTabSync, broadcastSync } from '../hooks/useCrossTabSync';
 import { pad } from '../utils/dateUtils';
 
 const TaskContext = createContext(null);
 
-/**
- * Custom hook to access the Task context.
- * @returns {Object} Task context value
- * @throws {Error} If used outside of TaskProvider
- */
 export function useTasks() {
   const context = useContext(TaskContext);
   if (!context) {
@@ -33,64 +23,18 @@ export function useTasks() {
   return context;
 }
 
-/**
- * TaskProvider component that manages task state and operations.
- */
 export function TaskProvider({ children }) {
-  const [tasks, setTasks] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { data: tasks = [], isLoading, error, refetch } = useTasksQuery();
+  
+  const createTaskMutation = useCreateTaskMutation();
+  const updateTaskMutation = useUpdateTaskMutation();
+  const deleteTaskMutation = useDeleteTaskMutation();
+  const toggleCompleteMutation = useToggleTaskCompleteMutation();
+  const addSubtaskMutation = useAddSubtaskMutation();
+  const updateSubtaskMutation = useUpdateSubtaskMutation();
+  const deleteSubtaskMutation = useDeleteSubtaskMutation();
+  const toggleSubtaskMutation = useToggleSubtaskCompleteMutation();
 
-  const isSyncing = useRef(false);
-
-  // Initialize storage and trigger migration on mount
-  useEffect(() => {
-    const init = async () => {
-      try {
-        await initStorage();
-        const loadedTasks = await loadTasksAsync();
-        setTasks(loadedTasks);
-      } catch (error) {
-        console.error('Error initializing storage:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    init();
-  }, []);
-
-  // Handle cross-tab sync
-  const handleSync = useCallback(async (type) => {
-    if (type === 'tasks') {
-      try {
-        const newTasks = await loadTasksAsync();
-        isSyncing.current = true; // Prevent echo
-        setTasks(newTasks);
-      } catch (error) {
-        console.error('Error syncing tasks:', error);
-      }
-    }
-  }, []);
-
-  useCrossTabSync(handleSync);
-
-  // Save tasks to storage whenever they change
-  useEffect(() => {
-    if (!isLoading) {
-      if (isSyncing.current) {
-        isSyncing.current = false;
-        return;
-      }
-      saveTasks(tasks);
-      broadcastSync('TASKS_UPDATED');
-    }
-  }, [tasks, isLoading]);
-
-  /**
-   * Checks if a new task would conflict with existing tasks.
-   * @param {Object} newTask - The task to check
-   * @param {Array} existingTasks - Array of existing tasks (defaults to current tasks)
-   * @returns {boolean} True if there's a conflict
-   */
   const hasTimeConflict = useCallback((newTask, existingTasks = tasks) => {
     if (!newTask.dueDate || !newTask.dueTime || !newTask.estimatedDuration) {
       return false;
@@ -100,7 +44,6 @@ export function TaskProvider({ children }) {
     const newEnd = new Date(newStart.getTime() + newTask.estimatedDuration * 60000);
     
     return existingTasks.some((task) => {
-      // Skip if it's the same task (for updates)
       if (task.id === newTask.id) return false;
       
       if (
@@ -113,18 +56,11 @@ export function TaskProvider({ children }) {
       }
       const start = new Date(`${task.dueDate}T${task.dueTime}`);
       const end = new Date(start.getTime() + task.estimatedDuration * 60000);
-      // Overlap: startA < endB && startB < endA
       return newStart < end && start < newEnd;
     });
   }, [tasks]);
 
-  /**
-   * Adds a new task.
-   * @param {Object} taskData - The task data
-   * @returns {{ success: boolean, message?: string, tasksAdded?: number }}
-   */
   const addTask = useCallback((taskData) => {
-    // Handle recurring tasks
     if (taskData.repeatUntil && taskData.repeatFrequency !== 'none' && taskData.dueDate) {
       const repeatedTasks = [];
       let currentDate = new Date(`${taskData.dueDate}T${taskData.dueTime || '00:00'}`);
@@ -149,7 +85,6 @@ export function TaskProvider({ children }) {
           assignedSlot: null,
         });
 
-        // Increment date based on frequency
         switch (taskData.repeatFrequency) {
           case 'daily':
             currentDate.setDate(currentDate.getDate() + 1);
@@ -176,7 +111,10 @@ export function TaskProvider({ children }) {
         };
       }
 
-      setTasks(prev => [...prev, ...repeatedTasks]);
+      repeatedTasks.forEach(task => {
+        createTaskMutation.mutate(task);
+      });
+      
       return { 
         success: true, 
         tasksAdded: repeatedTasks.length,
@@ -184,7 +122,6 @@ export function TaskProvider({ children }) {
       };
     }
 
-    // Single task
     if (hasTimeConflict(taskData)) {
       return { 
         success: false, 
@@ -192,156 +129,75 @@ export function TaskProvider({ children }) {
       };
     }
 
-    const newTask = {
-      ...taskData,
-      id: Date.now(),
-      createdAt: new Date().toISOString(),
-      isCompleted: false,
-      assignedSlot: null,
-    };
+    createTaskMutation.mutate(taskData);
+    return { success: true };
+  }, [tasks, hasTimeConflict, createTaskMutation]);
 
-    setTasks(prev => [...prev, newTask]);
-    return { success: true, task: newTask };
-  }, [tasks, hasTimeConflict]);
-
-  /**
-   * Updates an existing task.
-   * @param {number} taskId - The task ID to update
-   * @param {Object} updates - The updates to apply
-   * @returns {{ success: boolean, message?: string }}
-   */
   const updateTask = useCallback((taskId, updates) => {
-    const taskToUpdate = { ...tasks.find(t => t.id === taskId), ...updates, id: taskId };
+    const taskToUpdate = tasks.find(t => t.id === taskId);
+    if (!taskToUpdate) return { success: false, message: 'Task not found' };
     
-    if (hasTimeConflict(taskToUpdate)) {
+    const taskWithUpdates = { ...taskToUpdate, ...updates, id: taskId };
+    
+    if (hasTimeConflict(taskWithUpdates)) {
       return { 
         success: false, 
         message: 'This task overlaps with an existing task.' 
       };
     }
 
-    setTasks(prev => prev.map(task => 
-      task.id === taskId ? { ...task, ...updates } : task
-    ));
-    
+    updateTaskMutation.mutate({ id: taskId, updates });
     return { success: true };
-  }, [tasks, hasTimeConflict]);
+  }, [tasks, hasTimeConflict, updateTaskMutation]);
 
-  /**
-   * Deletes a task.
-   * @param {number} taskId - The task ID to delete
-   * @returns {Object} The deleted task
-   */
   const deleteTask = useCallback((taskId) => {
-    const task = tasks.find(t => t.id === taskId);
-    setTasks(prev => prev.filter(t => t.id !== taskId));
-    return task;
-  }, [tasks]);
+    deleteTaskMutation.mutate(taskId);
+    return tasks.find(t => t.id === taskId);
+  }, [tasks, deleteTaskMutation]);
 
-  /**
-   * Toggles the completion status of a task.
-   * @param {number} taskId - The task ID to toggle
-   * @returns {{ task: Object, newStatus: boolean }}
-   */
   const toggleTaskComplete = useCallback((taskId) => {
     const task = tasks.find(t => t.id === taskId);
     const newStatus = !task?.isCompleted;
 
-    setTasks(prev => prev.map(t =>
-      t.id === taskId ? { ...t, isCompleted: newStatus } : t
-    ));
+    toggleCompleteMutation.mutate(taskId);
 
     if (newStatus) {
       playCompleteSound();
     }
 
     return { task, newStatus };
-  }, [tasks]);
+  }, [tasks, toggleCompleteMutation]);
 
-  /**
-   * Toggles the completion status of a subtask.
-   * @param {number} taskId - The parent task ID
-   * @param {number} subtaskId - The subtask ID
-   */
   const toggleSubtaskComplete = useCallback((taskId, subtaskId) => {
-    setTasks(prev => prev.map(task => {
-      if (task.id !== taskId) return task;
-      
-      const subtasks = task.subtasks || [];
-      const updatedSubtasks = subtasks.map(st => 
-        st.id === subtaskId ? { ...st, isCompleted: !st.isCompleted } : st
-      );
-      
-      return { ...task, subtasks: updatedSubtasks };
-    }));
-  }, []);
+    toggleSubtaskMutation.mutate({ taskId, subtaskId });
+  }, [toggleSubtaskMutation]);
 
-  /**
-   * Adds a subtask to a task.
-   * @param {number} taskId - Parent task ID
-   * @param {Object} subtask - Subtask data
-   */
   const addSubtask = useCallback((taskId, subtask) => {
-    setTasks(prev => prev.map(task => {
-      if (task.id !== taskId) return task;
-      return {
-        ...task,
-        subtasks: [...(task.subtasks || []), { ...subtask, id: Date.now(), isCompleted: false }]
-      };
-    }));
-  }, []);
+    addSubtaskMutation.mutate({ taskId, subtask });
+  }, [addSubtaskMutation]);
 
-  /**
-   * Updates a subtask.
-   * @param {number} taskId - Parent task ID
-   * @param {number} subtaskId - Subtask ID
-   * @param {Object} updates - Updates to apply
-   */
   const updateSubtask = useCallback((taskId, subtaskId, updates) => {
-    setTasks(prev => prev.map(task => {
-      if (task.id !== taskId) return task;
-      return {
-        ...task,
-        subtasks: (task.subtasks || []).map(st => 
-          st.id === subtaskId ? { ...st, ...updates } : st
-        )
-      };
-    }));
-  }, []);
+    updateSubtaskMutation.mutate({ taskId, subtaskId, updates });
+  }, [updateSubtaskMutation]);
 
-  /**
-   * Deletes a subtask.
-   * @param {number} taskId - Parent task ID
-   * @param {number} subtaskId - Subtask ID
-   */
   const deleteSubtask = useCallback((taskId, subtaskId) => {
-    setTasks(prev => prev.map(task => {
-      if (task.id !== taskId) return task;
-      return {
-        ...task,
-        subtasks: (task.subtasks || []).filter(st => st.id !== subtaskId)
-      };
-    }));
-  }, []);
+    deleteSubtaskMutation.mutate({ taskId, subtaskId });
+  }, [deleteSubtaskMutation]);
 
-  /**
-   * Gets all pending (incomplete) tasks.
-   */
   const getPendingTasks = useCallback(() => {
     return tasks.filter(task => !task.isCompleted);
   }, [tasks]);
 
-  /**
-   * Gets all completed tasks.
-   */
   const getCompletedTasks = useCallback(() => {
     return tasks.filter(task => task.isCompleted);
   }, [tasks]);
 
-  const value = {
+  const value = useMemo(() => ({
     tasks,
-    setTasks,
+    setTasks: () => {},
     isLoading,
+    error,
+    refetch,
     addTask,
     updateTask,
     deleteTask,
@@ -353,7 +209,23 @@ export function TaskProvider({ children }) {
     hasTimeConflict,
     getPendingTasks,
     getCompletedTasks,
-  };
+  }), [
+    tasks,
+    isLoading,
+    error,
+    refetch,
+    addTask,
+    updateTask,
+    deleteTask,
+    toggleTaskComplete,
+    toggleSubtaskComplete,
+    addSubtask,
+    updateSubtask,
+    deleteSubtask,
+    hasTimeConflict,
+    getPendingTasks,
+    getCompletedTasks,
+  ]);
 
   return (
     <TaskContext.Provider value={value}>

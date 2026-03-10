@@ -40,9 +40,27 @@ import OverviewCard from "./components/sidebar/OverviewCard";
 import DailyTipCard from "./components/sidebar/DailyTipCard";
 
 import SplashScreen from "./components/pwa/SplashScreen";
+import LoginPage from "./components/auth/LoginPage";
 
 function App() {
   const [showSplash, setShowSplash] = useState(true);
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen serene-gradient flex items-center justify-center">
+        <div className="animate-pulse flex flex-col items-center gap-4">
+          <div className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+            Cortex
+          </div>
+          <div className="text-muted-foreground">Loading...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <LoginPage />;
+  }
   
   // Use the date refresh hook to handle midnight transitions
   const { getToday, now } = useDateRefresh();
@@ -67,6 +85,8 @@ function App() {
   } = useTodos();
 
   const {
+    user,
+    isLoading: authLoading,
     toggleDarkMode,
     notifications,
     showNotification,
