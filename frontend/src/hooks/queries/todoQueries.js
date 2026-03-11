@@ -5,18 +5,23 @@ import { loadTodosAsync, saveTodos } from '../../utils/storage';
 const TODOS_QUERY_KEY = ['todos'];
 
 const isOnline = () => navigator.onLine;
+const isAuthenticated = () => !!localStorage.getItem('authToken');
 
 export const useTodosQuery = () => {
   return useQuery({
     queryKey: TODOS_QUERY_KEY,
     queryFn: async () => {
+      if (!isAuthenticated()) {
+        return [];
+      }
       if (!isOnline()) {
         const localTodos = await loadTodosAsync();
         return localTodos;
       }
       const response = await apiClient.get('/todos');
-      return response.data.data;
+      return response.data.data || [];
     },
+    enabled: isAuthenticated(),
     staleTime: 1000 * 60 * 5,
     gcTime: 1000 * 60 * 30,
   });
@@ -29,7 +34,7 @@ export const useTodoByIdQuery = (todoId) => {
       const response = await apiClient.get(`/todos/${todoId}`);
       return response.data.data;
     },
-    enabled: !!todoId,
+    enabled: !!todoId && isAuthenticated(),
   });
 };
 
@@ -38,7 +43,7 @@ export const useCreateTodoMutation = () => {
 
   return useMutation({
     mutationFn: async (todoData) => {
-      if (!isOnline()) {
+      if (!isOnline() || !isAuthenticated()) {
         const localTodos = await loadTodosAsync();
         const maxOrder = localTodos.reduce((max, t) => Math.max(max, t.order || 0), 0);
         const offlineTodo = {
@@ -50,12 +55,38 @@ export const useCreateTodoMutation = () => {
           createdAt: new Date().toISOString(),
         };
         await saveTodos([...localTodos, offlineTodo]);
-        return offlineTodo;
+        queryClient.setQueryData(TODOS_QUERY_KEY, (old = []) => [...old, offlineTodo]);
+        return { ...offlineTodo, _queued: true };
       }
       const response = await apiClient.post('/todos', todoData);
       return response.data.data;
     },
-    onSuccess: () => {
+    onMutate: async (newTodo) => {
+      await queryClient.cancelQueries({ queryKey: TODOS_QUERY_KEY });
+      const previousTodos = queryClient.getQueryData(TODOS_QUERY_KEY);
+      
+      const localTodos = await loadTodosAsync();
+      const maxOrder = localTodos.reduce((max, t) => Math.max(max, t.order || 0), 0);
+      
+      const optimisticTodo = {
+        ...newTodo,
+        id: newTodo.id || `temp_${Date.now()}`,
+        _optimistic: true,
+        order: maxOrder + 1,
+        isCompleted: false,
+        createdAt: new Date().toISOString(),
+      };
+      
+      queryClient.setQueryData(TODOS_QUERY_KEY, (old = []) => [...old, optimisticTodo]);
+      
+      return { previousTodos };
+    },
+    onError: (err, newTodo, context) => {
+      if (context?.previousTodos) {
+        queryClient.setQueryData(TODOS_QUERY_KEY, context.previousTodos);
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: TODOS_QUERY_KEY });
     },
   });
@@ -66,18 +97,38 @@ export const useUpdateTodoMutation = () => {
 
   return useMutation({
     mutationFn: async ({ id, updates }) => {
-      if (!isOnline()) {
+      if (!isOnline() || !isAuthenticated()) {
         const localTodos = await loadTodosAsync();
         const updatedTodos = localTodos.map((t) =>
           t.id === id ? { ...t, ...updates, _offline: true, updatedAt: new Date().toISOString() } : t
         );
         await saveTodos(updatedTodos);
-        return { id, ...updates };
+        queryClient.setQueryData(TODOS_QUERY_KEY, (old = []) =>
+          old.map(t => t.id === id ? { ...t, ...updates, _offline: true } : t)
+        );
+        return { id, ...updates, _queued: true };
       }
       const response = await apiClient.patch(`/todos/${id}`, updates);
       return response.data.data;
     },
-    onSuccess: () => {
+    onMutate: async ({ id, updates }) => {
+      await queryClient.cancelQueries({ queryKey: TODOS_QUERY_KEY });
+      const previousTodos = queryClient.getQueryData(TODOS_QUERY_KEY);
+      
+      queryClient.setQueryData(TODOS_QUERY_KEY, (old = []) =>
+        old.map(todo => 
+          todo.id === id ? { ...todo, ...updates, _optimistic: true } : todo
+        )
+      );
+      
+      return { previousTodos };
+    },
+    onError: (err, variables, context) => {
+      if (context?.previousTodos) {
+        queryClient.setQueryData(TODOS_QUERY_KEY, context.previousTodos);
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: TODOS_QUERY_KEY });
     },
   });
@@ -88,16 +139,34 @@ export const useDeleteTodoMutation = () => {
 
   return useMutation({
     mutationFn: async (id) => {
-      if (!isOnline()) {
+      if (!isOnline() || !isAuthenticated()) {
         const localTodos = await loadTodosAsync();
         const filteredTodos = localTodos.filter((t) => t.id !== id);
         await saveTodos(filteredTodos);
-        return id;
+        queryClient.setQueryData(TODOS_QUERY_KEY, (old = []) =>
+          old.filter(t => t.id !== id)
+        );
+        return { id, _queued: true };
       }
       await apiClient.delete(`/todos/${id}`);
-      return id;
+      return { id };
     },
-    onSuccess: () => {
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: TODOS_QUERY_KEY });
+      const previousTodos = queryClient.getQueryData(TODOS_QUERY_KEY);
+      
+      queryClient.setQueryData(TODOS_QUERY_KEY, (old = []) =>
+        old.filter(todo => todo.id !== id)
+      );
+      
+      return { previousTodos };
+    },
+    onError: (err, id, context) => {
+      if (context?.previousTodos) {
+        queryClient.setQueryData(TODOS_QUERY_KEY, context.previousTodos);
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: TODOS_QUERY_KEY });
     },
   });
@@ -108,7 +177,7 @@ export const useToggleTodoCompleteMutation = () => {
 
   return useMutation({
     mutationFn: async (id) => {
-      if (!isOnline()) {
+      if (!isOnline() || !isAuthenticated()) {
         const localTodos = await loadTodosAsync();
         const todo = localTodos.find((t) => t.id === id);
         if (todo) {
@@ -117,14 +186,37 @@ export const useToggleTodoCompleteMutation = () => {
             t.id === id ? { ...t, isCompleted: newStatus, _offline: true } : t
           );
           await saveTodos(updatedTodos);
-          return { id, isCompleted: newStatus };
+          queryClient.setQueryData(TODOS_QUERY_KEY, (old = []) =>
+            old.map(t => t.id === id ? { ...t, isCompleted: newStatus, _offline: true } : t)
+          );
+          return { id, isCompleted: newStatus, _queued: true };
         }
         throw new Error('Todo not found');
       }
       const response = await apiClient.patch(`/todos/${id}/toggle-complete`);
       return response.data.data;
     },
-    onSuccess: () => {
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: TODOS_QUERY_KEY });
+      const previousTodos = queryClient.getQueryData(TODOS_QUERY_KEY);
+      
+      queryClient.setQueryData(TODOS_QUERY_KEY, (old = []) =>
+        old.map(todo => {
+          if (todo.id === id) {
+            return { ...todo, isCompleted: !todo.isCompleted, _optimistic: true };
+          }
+          return todo;
+        })
+      );
+      
+      return { previousTodos };
+    },
+    onError: (err, id, context) => {
+      if (context?.previousTodos) {
+        queryClient.setQueryData(TODOS_QUERY_KEY, context.previousTodos);
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: TODOS_QUERY_KEY });
     },
   });
@@ -135,7 +227,7 @@ export const useReorderTodosMutation = () => {
 
   return useMutation({
     mutationFn: async ({ activeId, overId }) => {
-      if (!isOnline()) {
+      if (!isOnline() || !isAuthenticated()) {
         const localTodos = await loadTodosAsync();
         const oldIndex = localTodos.findIndex((t) => t.id === activeId);
         const newIndex = localTodos.findIndex((t) => t.id === overId);
@@ -155,13 +247,50 @@ export const useReorderTodosMutation = () => {
         }));
 
         await saveTodos(reorderedTodos);
-        return { activeId, overId };
+        queryClient.setQueryData(TODOS_QUERY_KEY, reorderedTodos);
+        return { activeId, overId, _queued: true };
       }
       const response = await apiClient.patch('/todos/reorder', { activeId, overId });
       return response.data.data;
     },
-    onSuccess: () => {
+    onMutate: async ({ activeId, overId }) => {
+      await queryClient.cancelQueries({ queryKey: TODOS_QUERY_KEY });
+      const previousTodos = queryClient.getQueryData(TODOS_QUERY_KEY);
+      
+      const oldIndex = previousTodos.findIndex((t) => t.id === activeId);
+      const newIndex = previousTodos.findIndex((t) => t.id === overId);
+
+      if (oldIndex !== -1 && newIndex !== -1) {
+        const newTodos = [...previousTodos];
+        const [movedItem] = newTodos.splice(oldIndex, 1);
+        newTodos.splice(newIndex, 0, movedItem);
+        
+        const reorderedTodos = newTodos.map((t, index) => ({
+          ...t,
+          order: index,
+          _optimistic: true,
+        }));
+        
+        queryClient.setQueryData(TODOS_QUERY_KEY, reorderedTodos);
+      }
+      
+      return { previousTodos };
+    },
+    onError: (err, variables, context) => {
+      if (context?.previousTodos) {
+        queryClient.setQueryData(TODOS_QUERY_KEY, context.previousTodos);
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: TODOS_QUERY_KEY });
     },
   });
+};
+
+export const getTodosFromCache = (queryClient) => {
+  return queryClient.getQueryData(TODOS_QUERY_KEY) || [];
+};
+
+export const setTodosCache = (queryClient, todos) => {
+  queryClient.setQueryData(TODOS_QUERY_KEY, todos);
 };

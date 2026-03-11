@@ -7,6 +7,7 @@
  */
 
 import { memo } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Calendar, CheckCircle, Sparkles, Plus, BarChart2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import haptics from '../utils/haptics';
@@ -62,8 +63,8 @@ function FloatingAddButton({ onClick }) {
  * Bottom navigation bar for mobile devices
  * 
  * @param {Object} props
- * @param {string} props.currentView - Currently active view
- * @param {Function} props.setCurrentView - View change handler
+ * @param {string} props.currentView - Currently active view (deprecated, using URL)
+ * @param {Function} props.setCurrentView - View change handler (deprecated)
  * @param {Function} props.onAddTask - Add task handler
  * @param {Function} props.onOpenSettings - Settings handler
  */
@@ -73,6 +74,14 @@ function MobileNav({
   onAddTask, 
   onOpenSettings 
 }) {
+  const navigate = useNavigate();
+  const location = useLocation();
+  
+  const isActive = (path) => {
+    if (path === '/' && location.pathname === '/') return true;
+    return location.pathname === path;
+  };
+
   return (
     <motion.nav
       initial={{ y: 100 }}
@@ -84,15 +93,15 @@ function MobileNav({
         <NavButton
           icon={<Calendar className="h-5 w-5" />}
           label="Calendar"
-          active={currentView === 'calendar'}
-          onClick={() => setCurrentView('calendar')}
+          active={isActive('/')}
+          onClick={() => navigate('/')}
         />
         
         <NavButton
           icon={<CheckCircle className="h-5 w-5" />}
           label="Tasks"
-          active={currentView === 'tasks'}
-          onClick={() => setCurrentView('tasks')}
+          active={isActive('/tasks')}
+          onClick={() => navigate('/tasks')}
         />
         
         <div className="flex justify-center items-end px-2">
@@ -102,15 +111,15 @@ function MobileNav({
         <NavButton
           icon={<Sparkles className="h-5 w-5" />}
           label="Schedule"
-          active={currentView === 'scheduler'}
-          onClick={() => setCurrentView('scheduler')}
+          active={isActive('/scheduler')}
+          onClick={() => navigate('/scheduler')}
         />
         
         <NavButton
           icon={<BarChart2 className="h-5 w-5" />}
           label="Stats"
-          active={currentView === 'statistics'}
-          onClick={() => setCurrentView('statistics')}
+          active={isActive('/statistics')}
+          onClick={() => navigate('/statistics')}
         />
       </div>
     </motion.nav>

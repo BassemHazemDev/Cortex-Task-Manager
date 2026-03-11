@@ -1,4 +1,5 @@
 import { createContext, useContext, useCallback, useMemo } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   useTodosQuery,
   useCreateTodoMutation,
@@ -6,6 +7,7 @@ import {
   useDeleteTodoMutation,
   useToggleTodoCompleteMutation,
   useReorderTodosMutation,
+  setTodosCache,
 } from '../hooks/queries/todoQueries';
 import { playCompleteSound } from '../utils/audioUtils';
 
@@ -20,6 +22,7 @@ export function useTodos() {
 }
 
 export function TodoProvider({ children }) {
+  const queryClient = useQueryClient();
   const { data: todos = [], isLoading, error, refetch } = useTodosQuery();
   
   const createTodoMutation = useCreateTodoMutation();
@@ -28,30 +31,51 @@ export function TodoProvider({ children }) {
   const toggleCompleteMutation = useToggleTodoCompleteMutation();
   const reorderMutation = useReorderTodosMutation();
 
-  const addTodo = useCallback((todoData) => {
-    createTodoMutation.mutate(todoData);
+  const setTodos = useCallback((newTodos) => {
+    setTodosCache(queryClient, newTodos);
+  }, [queryClient]);
+
+  const addTodo = useCallback(async (todoData) => {
+    try {
+      await createTodoMutation.mutateAsync(todoData);
+      return { success: true };
+    } catch (error) {
+      return { success: false, message: error.message || 'Failed to create todo' };
+    }
   }, [createTodoMutation]);
 
-  const updateTodo = useCallback((id, updates) => {
-    updateTodoMutation.mutate({ id, updates });
+  const updateTodo = useCallback(async (id, updates) => {
+    try {
+      await updateTodoMutation.mutateAsync({ id, updates });
+      return { success: true };
+    } catch (error) {
+      return { success: false, message: error.message || 'Failed to update todo' };
+    }
   }, [updateTodoMutation]);
 
-  const deleteTodo = useCallback((id) => {
-    deleteTodoMutation.mutate(id);
-    return todos.find(t => t.id === id);
+  const deleteTodo = useCallback(async (id) => {
+    const todo = todos.find(t => t.id === id);
+    try {
+      await deleteTodoMutation.mutateAsync(id);
+      return todo;
+    } catch (error) {
+      return todo;
+    }
   }, [todos, deleteTodoMutation]);
 
-  const toggleTodoComplete = useCallback((id) => {
+  const toggleTodoComplete = useCallback(async (id) => {
     const todo = todos.find(t => t.id === id);
     const newStatus = !todo?.isCompleted;
 
-    toggleCompleteMutation.mutate(id);
-
-    if (newStatus) {
-      playCompleteSound();
+    try {
+      await toggleCompleteMutation.mutateAsync(id);
+      if (newStatus) {
+        playCompleteSound();
+      }
+      return { todo, newStatus, success: true };
+    } catch (error) {
+      return { todo, newStatus, success: false, error: error.message };
     }
-
-    return { todo, newStatus };
   }, [todos, toggleCompleteMutation]);
 
   const getPendingTodos = useCallback(() => {
@@ -62,15 +86,28 @@ export function TodoProvider({ children }) {
     return todos.filter(todo => todo.isCompleted);
   }, [todos]);
 
-  const reorderTodos = useCallback((activeId, overId) => {
-    reorderMutation.mutate({ activeId, overId });
+  const reorderTodos = useCallback(async (activeId, overId) => {
+    try {
+      await reorderMutation.mutateAsync({ activeId, overId });
+    } catch (error) {
+      console.error('Failed to reorder todos:', error);
+    }
   }, [reorderMutation]);
+
+  const isAnyMutationLoading = 
+    createTodoMutation.isPending ||
+    updateTodoMutation.isPending ||
+    deleteTodoMutation.isPending ||
+    toggleCompleteMutation.isPending ||
+    reorderMutation.isPending;
 
   const value = useMemo(() => ({
     todos,
-    setTodos: () => {},
+    setTodos,
     isLoading,
+    isMutating: isAnyMutationLoading,
     error,
+    refetch,
     addTodo,
     updateTodo,
     deleteTodo,
@@ -78,11 +115,19 @@ export function TodoProvider({ children }) {
     getPendingTodos,
     getCompletedTodos,
     reorderTodos,
-    refetch,
+    mutationErrors: {
+      create: createTodoMutation.error,
+      update: updateTodoMutation.error,
+      delete: deleteTodoMutation.error,
+      toggle: toggleCompleteMutation.error,
+      reorder: reorderMutation.error,
+    },
   }), [
     todos,
     isLoading,
+    isAnyMutationLoading,
     error,
+    refetch,
     addTodo,
     updateTodo,
     deleteTodo,
@@ -90,7 +135,11 @@ export function TodoProvider({ children }) {
     getPendingTodos,
     getCompletedTodos,
     reorderTodos,
-    refetch,
+    createTodoMutation.error,
+    updateTodoMutation.error,
+    deleteTodoMutation.error,
+    toggleCompleteMutation.error,
+    reorderMutation.error,
   ]);
 
   return (

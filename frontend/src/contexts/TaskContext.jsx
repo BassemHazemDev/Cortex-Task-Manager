@@ -1,4 +1,5 @@
 import { createContext, useContext, useCallback, useMemo } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   useTasksQuery,
   useCreateTaskMutation,
@@ -9,6 +10,7 @@ import {
   useUpdateSubtaskMutation,
   useDeleteSubtaskMutation,
   useToggleSubtaskCompleteMutation,
+  setTasksCache,
 } from '../hooks/queries/taskQueries';
 import { playCompleteSound } from '../utils/audioUtils';
 import { pad } from '../utils/dateUtils';
@@ -24,6 +26,7 @@ export function useTasks() {
 }
 
 export function TaskProvider({ children }) {
+  const queryClient = useQueryClient();
   const { data: tasks = [], isLoading, error, refetch } = useTasksQuery();
   
   const createTaskMutation = useCreateTaskMutation();
@@ -60,7 +63,11 @@ export function TaskProvider({ children }) {
     });
   }, [tasks]);
 
-  const addTask = useCallback((taskData) => {
+  const setTasks = useCallback((newTasks) => {
+    setTasksCache(queryClient, newTasks);
+  }, [queryClient]);
+
+  const addTask = useCallback(async (taskData) => {
     if (taskData.repeatUntil && taskData.repeatFrequency !== 'none' && taskData.dueDate) {
       const repeatedTasks = [];
       let currentDate = new Date(`${taskData.dueDate}T${taskData.dueTime || '00:00'}`);
@@ -111,9 +118,9 @@ export function TaskProvider({ children }) {
         };
       }
 
-      repeatedTasks.forEach(task => {
-        createTaskMutation.mutate(task);
-      });
+      for (const task of repeatedTasks) {
+        await createTaskMutation.mutateAsync(task).catch(() => {});
+      }
       
       return { 
         success: true, 
@@ -129,11 +136,15 @@ export function TaskProvider({ children }) {
       };
     }
 
-    createTaskMutation.mutate(taskData);
-    return { success: true };
+    try {
+      await createTaskMutation.mutateAsync(taskData);
+      return { success: true };
+    } catch (error) {
+      return { success: false, message: error.message || 'Failed to create task' };
+    }
   }, [tasks, hasTimeConflict, createTaskMutation]);
 
-  const updateTask = useCallback((taskId, updates) => {
+  const updateTask = useCallback(async (taskId, updates) => {
     const taskToUpdate = tasks.find(t => t.id === taskId);
     if (!taskToUpdate) return { success: false, message: 'Task not found' };
     
@@ -146,42 +157,69 @@ export function TaskProvider({ children }) {
       };
     }
 
-    updateTaskMutation.mutate({ id: taskId, updates });
-    return { success: true };
+    try {
+      await updateTaskMutation.mutateAsync({ id: taskId, updates });
+      return { success: true };
+    } catch (error) {
+      return { success: false, message: error.message || 'Failed to update task' };
+    }
   }, [tasks, hasTimeConflict, updateTaskMutation]);
 
-  const deleteTask = useCallback((taskId) => {
-    deleteTaskMutation.mutate(taskId);
-    return tasks.find(t => t.id === taskId);
+  const deleteTask = useCallback(async (taskId) => {
+    const task = tasks.find(t => t.id === taskId);
+    try {
+      await deleteTaskMutation.mutateAsync(taskId);
+      return task;
+    } catch (error) {
+      return task;
+    }
   }, [tasks, deleteTaskMutation]);
 
-  const toggleTaskComplete = useCallback((taskId) => {
+  const toggleTaskComplete = useCallback(async (taskId) => {
     const task = tasks.find(t => t.id === taskId);
     const newStatus = !task?.isCompleted;
 
-    toggleCompleteMutation.mutate(taskId);
-
-    if (newStatus) {
-      playCompleteSound();
+    try {
+      await toggleCompleteMutation.mutateAsync(taskId);
+      if (newStatus) {
+        playCompleteSound();
+      }
+      return { task, newStatus, success: true };
+    } catch (error) {
+      return { task, newStatus, success: false, error: error.message };
     }
-
-    return { task, newStatus };
   }, [tasks, toggleCompleteMutation]);
 
-  const toggleSubtaskComplete = useCallback((taskId, subtaskId) => {
-    toggleSubtaskMutation.mutate({ taskId, subtaskId });
+  const toggleSubtaskComplete = useCallback(async (taskId, subtaskId) => {
+    try {
+      await toggleSubtaskMutation.mutateAsync({ taskId, subtaskId });
+    } catch (error) {
+      console.error('Failed to toggle subtask:', error);
+    }
   }, [toggleSubtaskMutation]);
 
-  const addSubtask = useCallback((taskId, subtask) => {
-    addSubtaskMutation.mutate({ taskId, subtask });
+  const addSubtask = useCallback(async (taskId, subtask) => {
+    try {
+      await addSubtaskMutation.mutateAsync({ taskId, subtask });
+    } catch (error) {
+      console.error('Failed to add subtask:', error);
+    }
   }, [addSubtaskMutation]);
 
-  const updateSubtask = useCallback((taskId, subtaskId, updates) => {
-    updateSubtaskMutation.mutate({ taskId, subtaskId, updates });
+  const updateSubtask = useCallback(async (taskId, subtaskId, updates) => {
+    try {
+      await updateSubtaskMutation.mutateAsync({ taskId, subtaskId, updates });
+    } catch (error) {
+      console.error('Failed to update subtask:', error);
+    }
   }, [updateSubtaskMutation]);
 
-  const deleteSubtask = useCallback((taskId, subtaskId) => {
-    deleteSubtaskMutation.mutate({ taskId, subtaskId });
+  const deleteSubtask = useCallback(async (taskId, subtaskId) => {
+    try {
+      await deleteSubtaskMutation.mutateAsync({ taskId, subtaskId });
+    } catch (error) {
+      console.error('Failed to delete subtask:', error);
+    }
   }, [deleteSubtaskMutation]);
 
   const getPendingTasks = useCallback(() => {
@@ -192,10 +230,21 @@ export function TaskProvider({ children }) {
     return tasks.filter(task => task.isCompleted);
   }, [tasks]);
 
+  const isAnyMutationLoading = 
+    createTaskMutation.isPending ||
+    updateTaskMutation.isPending ||
+    deleteTaskMutation.isPending ||
+    toggleCompleteMutation.isPending ||
+    addSubtaskMutation.isPending ||
+    updateSubtaskMutation.isPending ||
+    deleteSubtaskMutation.isPending ||
+    toggleSubtaskMutation.isPending;
+
   const value = useMemo(() => ({
     tasks,
-    setTasks: () => {},
+    setTasks,
     isLoading,
+    isMutating: isAnyMutationLoading,
     error,
     refetch,
     addTask,
@@ -209,9 +258,20 @@ export function TaskProvider({ children }) {
     hasTimeConflict,
     getPendingTasks,
     getCompletedTasks,
+    mutationErrors: {
+      create: createTaskMutation.error,
+      update: updateTaskMutation.error,
+      delete: deleteTaskMutation.error,
+      toggle: toggleCompleteMutation.error,
+      addSubtask: addSubtaskMutation.error,
+      updateSubtask: updateSubtaskMutation.error,
+      deleteSubtask: deleteSubtaskMutation.error,
+      toggleSubtask: toggleSubtaskMutation.error,
+    },
   }), [
     tasks,
     isLoading,
+    isAnyMutationLoading,
     error,
     refetch,
     addTask,
@@ -225,6 +285,14 @@ export function TaskProvider({ children }) {
     hasTimeConflict,
     getPendingTasks,
     getCompletedTasks,
+    createTaskMutation.error,
+    updateTaskMutation.error,
+    deleteTaskMutation.error,
+    toggleCompleteMutation.error,
+    addSubtaskMutation.error,
+    updateSubtaskMutation.error,
+    deleteSubtaskMutation.error,
+    toggleSubtaskMutation.error,
   ]);
 
   return (

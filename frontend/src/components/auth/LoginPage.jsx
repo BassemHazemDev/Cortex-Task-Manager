@@ -9,6 +9,7 @@ export default function LoginPage() {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [name, setName] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -20,11 +21,17 @@ export default function LoginPage() {
     setError('');
     setIsLoading(true);
 
+    if (!isLogin && password !== confirmPassword) {
+      setError('Passwords do not match');
+      setIsLoading(false);
+      return;
+    }
+
     try {
       if (isLogin) {
         await login({ email, password });
       } else {
-        await register({ name, email, password });
+        await register({ name, email, password, passwordConfirm: confirmPassword });
       }
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Authentication failed');
@@ -99,10 +106,28 @@ export default function LoginPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   className="pl-10"
                   required
-                  minLength={6}
+                  minLength={8}
                 />
               </div>
             </div>
+
+            {!isLogin && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Confirm Password</label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    type="password"
+                    placeholder="••••••••"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="pl-10"
+                    required={!isLogin}
+                    minLength={8}
+                  />
+                </div>
+              </div>
+            )}
 
             {error && (
               <motion.div

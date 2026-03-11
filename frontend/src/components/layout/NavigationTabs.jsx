@@ -1,54 +1,41 @@
 import React from "react";
+import { NavLink } from "react-router-dom";
 import { Button } from "../ui/button";
 import { useApp } from "../../contexts/AppContext";
 import { Calendar, CheckCircle, Sparkles, BarChart2, Expand, ChevronsDownUp } from "lucide-react";
 import { useIsMobile } from "../../hooks/use-mobile";
+import { useLocation } from "react-router-dom";
 
 const NavigationTabs = ({ currentView, setCurrentView }) => {
   const { calendarExpanded, setCalendarExpanded } = useApp();
   const isMobile = useIsMobile();
+  const location = useLocation();
+  
+  const isCalendar = location.pathname === "/";
+  const isScheduler = location.pathname === "/scheduler";
+  const isStatistics = location.pathname === "/statistics";
 
   return (
     <div className="flex space-x-2 mb-8 navigation-container items-center relative">
       <div className="flex space-x-2 navigation-inner">
-        <Button
-          variant={currentView === "calendar" ? "default" : "outline"}
-          onClick={() => setCurrentView("calendar")}
-          className="flex items-center space-x-2 transition-all duration-300 hover:shadow-md active:scale-95 calendar-button"
-        >
+        <NavLink to="/" className={({ isActive }) => isActive || isCalendar ? "inline-flex items-center space-x-2 transition-all duration-300 hover:shadow-md active:scale-95 bg-primary text-primary-foreground shadow-xs rounded-md text-sm font-medium h-9 px-4 py-2" : "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 border border-input bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-input/30 dark:border-input dark:hover:bg-input/50 h-9 px-4 py-2"}>
           <Calendar className="h-4 w-4" />
           <span>Calendar</span>
-        </Button>
-        <Button
-          variant={currentView === "tasks" ? "default" : "outline"}
-          onClick={() => setCurrentView("tasks")}
-          data-tour="tasks-tab"
-          className="flex items-center space-x-2 transition-all duration-300 hover:shadow-md active:scale-95"
-        >
+        </NavLink>
+        <NavLink to="/tasks" className={({ isActive }) => isActive ? "inline-flex items-center space-x-2 transition-all duration-300 hover:shadow-md active:scale-95 bg-primary text-primary-foreground shadow-xs rounded-md text-sm font-medium h-9 px-4 py-2" : "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 border border-input bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-input/30 dark:border-input dark:hover:bg-input/50 h-9 px-4 py-2"}>
           <CheckCircle className="h-4 w-4" />
           <span>Tasks</span>
-        </Button>
+        </NavLink>
       </div>
-      <Button
-        variant={currentView === "scheduler" ? "default" : "outline"}
-        onClick={() => setCurrentView("scheduler")}
-        data-tour="scheduler-tab"
-        className="flex items-center space-x-2 transition-all duration-300 hover:shadow-md active:scale-95"
-      >
+      <NavLink to="/scheduler" className={({ isActive }) => isActive || isScheduler ? "inline-flex items-center space-x-2 transition-all duration-300 hover:shadow-md active:scale-95 bg-primary text-primary-foreground shadow-xs rounded-md text-sm font-medium h-9 px-4 py-2" : "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 border border-input bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-input/30 dark:border-input dark:hover:bg-input/50 h-9 px-4 py-2"}>
         <Sparkles className="h-4 w-4" />
         <span>Smart Scheduler</span>
-      </Button>
-      <Button
-        variant={currentView === "statistics" ? "default" : "outline"}
-        onClick={() => setCurrentView("statistics")}
-        data-tour="statistics-tab"
-        className="flex items-center space-x-2 transition-all duration-300 hover:shadow-md active:scale-95"
-      >
+      </NavLink>
+      <NavLink to="/statistics" className={({ isActive }) => isActive || isStatistics ? "inline-flex items-center space-x-2 transition-all duration-300 hover:shadow-md active:scale-95 bg-primary text-primary-foreground shadow-xs rounded-md text-sm font-medium h-9 px-4 py-2" : "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 border border-input bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-input/30 dark:border-input dark:hover:bg-input/50 h-9 px-4 py-2"}>
         <BarChart2 className="h-4 w-4" />
         <span>Statistics</span>
-      </Button>
-      {/* Expand/Collapse Calendar Button (Desktop only, right aligned, icon with hover text) */}
-      {!isMobile && currentView === "calendar" && (
+      </NavLink>
+      {!isMobile && isCalendar && (
         <div
           style={{
             position: "absolute",

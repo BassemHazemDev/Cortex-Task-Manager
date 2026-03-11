@@ -5,6 +5,7 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
+import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import dailyTips from "./lib/dailyTips";
 import { useDateRefresh } from "./hooks/useDateRefresh";
@@ -43,47 +44,12 @@ import SplashScreen from "./components/pwa/SplashScreen";
 import LoginPage from "./components/auth/LoginPage";
 
 function App() {
+  // =========================================================================
+  // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL RETURNS
+  // =========================================================================
   const [showSplash, setShowSplash] = useState(true);
-
-  if (authLoading) {
-    return (
-      <div className="min-h-screen serene-gradient flex items-center justify-center">
-        <div className="animate-pulse flex flex-col items-center gap-4">
-          <div className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-            Cortex
-          </div>
-          <div className="text-muted-foreground">Loading...</div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return <LoginPage />;
-  }
   
-  // Use the date refresh hook to handle midnight transitions
-  const { getToday, now } = useDateRefresh();
-
-  // =========================================================================
-  // CONTEXT HOOKS
-  // =========================================================================
-  const {
-    tasks,
-    addTask: contextAddTask,
-    updateTask: contextUpdateTask,
-    deleteTask: contextDeleteTask,
-    toggleTaskComplete: contextToggleTaskComplete,
-    toggleSubtaskComplete: contextToggleSubtaskComplete,
-  } = useTasks();
-
-  const {
-    addTodo: contextAddTodo,
-    updateTodo: contextUpdateTodo,
-    deleteTodo: contextDeleteTodo,
-    toggleTodoComplete: contextToggleTodoComplete,
-  } = useTodos();
-
+  // Context hooks
   const {
     user,
     isLoading: authLoading,
@@ -101,34 +67,40 @@ function App() {
     setMobileCalendarExpanded,
   } = useApp();
 
+  const {
+    tasks,
+    addTask: contextAddTask,
+    updateTask: contextUpdateTask,
+    deleteTask: contextDeleteTask,
+    toggleTaskComplete: contextToggleTaskComplete,
+    toggleSubtaskComplete: contextToggleSubtaskComplete,
+  } = useTasks();
+
+  const {
+    addTodo: contextAddTodo,
+    updateTodo: contextUpdateTodo,
+    deleteTodo: contextDeleteTodo,
+    toggleTodoComplete: contextToggleTodoComplete,
+  } = useTodos();
+
+  const { getToday, now } = useDateRefresh();
   const isMobile = useIsMobile();
   const { resetTour } = useOnboarding();
+  const navigate = useNavigate();
+  const location = useLocation();
 
-  // =========================================================================
-  // LOCAL UI STATE
-  // =========================================================================
-  const [currentView, setCurrentView] = useState("calendar");
+  // Local state hooks
   const [selectedDate, setSelectedDate] = useState(new Date());
-
-  // Modal visibility states
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [showTodoForm, setShowTodoForm] = useState(false);
-
-  // Active item states
   const [editingTask, setEditingTask] = useState(null);
   const [editingTodo, setEditingTodo] = useState(null);
-
-  // Viewing state
   const [viewingItem, setViewingItem] = useState(null);
-  const [viewingType, setViewingType] = useState(null); // 'task' | 'todo'
-
+  const [viewingType, setViewingType] = useState(null);
   const [showShortcutsModal, setShowShortcutsModal] = useState(false);
-
-  // =========================================================================
-  // MEMOIZED VALUES
-  // =========================================================================
   const [dailyTip, setDailyTip] = useState(dailyTips[0]);
 
+  // Effects must be called before conditional returns
   useEffect(() => {
     const loadDailyTip = async () => {
       const today = getToday();
@@ -151,7 +123,7 @@ function App() {
   }, [getToday]);
 
   // =========================================================================
-  // KEYBOARD SHORTCUTS
+  // CALLBACKS AND KEYBOARD SHORTCUTS - Must be before conditionals
   // =========================================================================
   const closeAllModals = useCallback(() => {
     if (showTaskForm) {
@@ -191,13 +163,33 @@ function App() {
       setShowTodoForm(true);
     },
     escape: closeAllModals,
-    "alt+1": () => setCurrentView("calendar"),
-    "alt+2": () => setCurrentView("tasks"),
-    "alt+3": () => setCurrentView("scheduler"),
+    "alt+1": () => navigate("/"),
+    "alt+2": () => navigate("/tasks"),
+    "alt+3": () => navigate("/scheduler"),
     "alt+d": toggleDarkMode,
     "?": () => setShowShortcutsModal(true),
     "shift+?": () => setShowShortcutsModal(true),
   });
+
+  // =========================================================================
+  // CONDITIONAL RENDERING - After all hooks and callbacks
+  // =========================================================================
+  if (authLoading) {
+    return (
+      <div className="min-h-screen serene-gradient flex items-center justify-center">
+        <div className="animate-pulse flex flex-col items-center gap-4">
+          <div className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+            Cortex
+          </div>
+          <div className="text-muted-foreground">Loading...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <LoginPage />;
+  }
 
   // =========================================================================
   // TASK CRUD OPERATIONS
@@ -434,10 +426,7 @@ function App() {
           onAddTask={() => openTaskForm()}
         />
 
-        <NavigationTabs
-          currentView={currentView}
-          setCurrentView={setCurrentView}
-        />
+        <NavigationTabs />
 
         <div
           className={`main-content-area grid gap-8 ${
@@ -454,13 +443,11 @@ function App() {
             }
             style={{ transition: "all 0.5s cubic-bezier(0.4,0,0.2,1)" }}
           >
-            <AnimatePresence mode="wait">
-              {currentView === "calendar" && (
+            <Routes location={location}>
+              <Route path="/" element={
                 <motion.div
-                  key="calendar"
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
                   transition={{ duration: 0.3, ease: "easeOut" }}
                   className={`calendar-container ${
                     calendarExpanded && !isMobile ? "expanded" : ""
@@ -488,14 +475,11 @@ function App() {
                     onDeleteTask={handleDeleteTask}
                   />
                 </motion.div>
-              )}
-
-              {currentView === "tasks" && (
+              } />
+              <Route path="/tasks" element={
                 <motion.div
-                  key="tasks"
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
                   transition={{ duration: 0.3, ease: "easeOut" }}
                 >
                   <TaskList
@@ -507,14 +491,11 @@ function App() {
                     onToggleSubtask={handleToggleSubtaskComplete}
                   />
                 </motion.div>
-              )}
-
-              {currentView === "scheduler" && (
+              } />
+              <Route path="/scheduler" element={
                 <motion.div
-                  key="scheduler"
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
                   transition={{ duration: 0.3, ease: "easeOut" }}
                 >
                   <SmartScheduler
@@ -524,20 +505,17 @@ function App() {
                     availableHours={availableHours}
                   />
                 </motion.div>
-              )}
-
-              {currentView === "statistics" && (
+              } />
+              <Route path="/statistics" element={
                 <motion.div
-                  key="statistics"
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
                   transition={{ duration: 0.3, ease: "easeOut" }}
                 >
                   <StatisticsView />
                 </motion.div>
-              )}
-            </AnimatePresence>
+              } />
+            </Routes>
           </div>
 
           <div
@@ -695,8 +673,6 @@ function App() {
 
         {isMobile && (
           <MobileNav
-            currentView={currentView}
-            setCurrentView={setCurrentView}
             onAddTask={() => openTaskForm()}
             onOpenSettings={() => setShowSettingsModal(true)}
           />

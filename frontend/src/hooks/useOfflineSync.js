@@ -1,114 +1,89 @@
 import { useEffect, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { loadTasksAsync, saveTasks } from '../utils/storage';
 import apiClient from '../lib/api';
+
+const SYNC_QUEUE_KEY = 'offline_sync_queue';
 
 export function useOfflineSync() {
   const queryClient = useQueryClient();
 
-  const syncOfflineTasks = useCallback(async () => {
-    try {
-      const offlineTasks = await loadTasksAsync();
-      const pendingTasks = offlineTasks.filter((t) => t._offline);
+  const isOnline = () => navigator.onLine;
+  const isAuthenticated = () => !!localStorage.getItem('authToken');
 
-      for (const task of pendingTasks) {
-        try {
-          if (task.id.toString().startsWith('offline_')) {
-            const { _offline, id, ...taskData } = task;
-            const response = await apiClient.post('/tasks', taskData);
-            const serverTask = response.data.data;
+  const processQueue = useCallback(async () => {
+    if (!isOnline() || !isAuthenticated()) return;
 
-            const allTasks = await loadTasksAsync();
-            const updatedTasks = allTasks.map((t) =>
-              t.id === id ? { ...serverTask, _synced: true } : t
-            );
-            await saveTasks(updatedTasks);
-          } else {
-            const { _offline, id, ...taskData } = task;
-            await apiClient.patch(`/tasks/${id}`, taskData);
+    const queue = JSON.parse(localStorage.getItem(SYNC_QUEUE_KEY) || '[]');
+    if (queue.length === 0) return;
 
-            const allTasks = await loadTasksAsync();
-            const updatedTasks = allTasks.map((t) =>
-              t.id === id ? { ...t, _offline: false, _synced: true } : t
-            );
-            await saveTasks(updatedTasks);
-          }
-        } catch (error) {
-          console.error(`Failed to sync task ${task.id}:`, error);
+    const processedIds = [];
+
+    for (const action of queue) {
+      try {
+        switch (action.type) {
+          case 'CREATE_TASK':
+            await apiClient.post('/tasks', action.data);
+            break;
+          case 'UPDATE_TASK':
+            await apiClient.patch(`/tasks/${action.data.id}`, action.data.updates);
+            break;
+          case 'DELETE_TASK':
+            await apiClient.delete(`/tasks/${action.id}`);
+            break;
+          case 'TOGGLE_TASK':
+            await apiClient.patch(`/tasks/${action.id}/toggle-complete`);
+            break;
+          case 'CREATE_TODO':
+            await apiClient.post('/todos', action.data);
+            break;
+          case 'UPDATE_TODO':
+            await apiClient.patch(`/todos/${action.data.id}`, action.data.updates);
+            break;
+          case 'DELETE_TODO':
+            await apiClient.delete(`/todos/${action.id}`);
+            break;
+          case 'TOGGLE_TODO':
+            await apiClient.patch(`/todos/${action.id}/toggle-complete`);
+            break;
+          case 'REORDER_TODOS':
+            await apiClient.patch('/todos/reorder', { activeId: action.data.activeId, overId: action.data.overId });
+            break;
+          default:
+            break;
         }
+        processedIds.push(action.timestamp);
+      } catch (error) {
+        console.error('Failed to sync offline action:', action, error);
       }
+    }
 
+    const remainingQueue = queue.filter(item => !processedIds.includes(item.timestamp));
+    localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(remainingQueue));
+
+    if (remainingQueue.length === 0) {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
-    } catch (error) {
-      console.error('Failed to sync offline tasks:', error);
-    }
-  }, [queryClient]);
-
-  const syncOfflineTodos = useCallback(async () => {
-    try {
-      const db = (await import('../utils/db')).default;
-      const offlineTodos = await db.todos.where('_offline').equals(1).toArray();
-
-      for (const todo of offlineTodos) {
-        try {
-          if (todo.id.toString().startsWith('offline_')) {
-            const { _offline, id, ...todoData } = todo;
-            const response = await apiClient.post('/todos', todoData);
-            const serverTodo = response.data.data;
-
-            const allTodos = await db.todos.toArray();
-            const updatedTodos = allTodos.map((t) =>
-              t.id === id ? { ...serverTodo, _offline: 0 } : t
-            );
-            await db.todos.bulkPut(updatedTodos);
-          } else {
-            const { _offline, id, ...todoData } = todo;
-            await apiClient.patch(`/todos/${id}`, todoData);
-
-            const allTodos = await db.todos.toArray();
-            const updatedTodos = allTodos.map((t) =>
-              t.id === id ? { ...t, _offline: 0 } : t
-            );
-            await db.todos.bulkPut(updatedTodos);
-          }
-        } catch (error) {
-          console.error(`Failed to sync todo ${todo.id}:`, error);
-        }
-      }
-
       queryClient.invalidateQueries({ queryKey: ['todos'] });
-    } catch (error) {
-      console.error('Failed to sync offline todos:', error);
     }
   }, [queryClient]);
-
-  const syncAllOfflineData = useCallback(async () => {
-    if (!navigator.onLine) return;
-
-    const token = localStorage.getItem('authToken');
-    if (!token) return;
-
-    await Promise.all([syncOfflineTasks(), syncOfflineTodos()]);
-  }, [queryClient, syncOfflineTasks, syncOfflineTodos]);
 
   useEffect(() => {
     const handleOnline = () => {
       console.log('Back online! Syncing offline data...');
-      syncAllOfflineData();
+      processQueue();
     };
 
     window.addEventListener('online', handleOnline);
 
-    if (navigator.onLine) {
-      syncAllOfflineData();
+    if (isOnline() && isAuthenticated()) {
+      processQueue();
     }
 
     return () => {
       window.removeEventListener('online', handleOnline);
     };
-  }, [syncAllOfflineData]);
+  }, [processQueue]);
 
-  return { syncAllOfflineData };
+  return { processQueue };
 }
 
 export default useOfflineSync;
