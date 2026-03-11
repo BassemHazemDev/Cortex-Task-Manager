@@ -137,12 +137,24 @@ export function TaskProvider({ children }) {
     }
 
     try {
-      await createTaskMutation.mutateAsync(taskData);
+      const result = await createTaskMutation.mutateAsync(taskData);
+      // If it's an offline/queued task, it's already saved locally
+      if (result?._queued || result?._optimistic) {
+        return { success: true, offline: true };
+      }
       return { success: true };
     } catch (error) {
+      // Check if the task was still added optimistically
+      const cachedTasks = queryClient.getQueryData(['tasks']) || [];
+      const wasOptimisticallyAdded = cachedTasks.some(t => 
+        t._optimistic || t._offline
+      );
+      if (wasOptimisticallyAdded) {
+        return { success: true, offline: true };
+      }
       return { success: false, message: error.message || 'Failed to create task' };
     }
-  }, [tasks, hasTimeConflict, createTaskMutation]);
+  }, [tasks, hasTimeConflict, createTaskMutation, queryClient]);
 
   const updateTask = useCallback(async (taskId, updates) => {
     const taskToUpdate = tasks.find(t => t.id === taskId);
