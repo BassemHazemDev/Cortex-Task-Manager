@@ -22,7 +22,6 @@ export const useTasksQuery = (filters = {}) => {
       const response = await apiClient.get(`/tasks?${params}`);
       return response.data.data || [];
     },
-    enabled: isAuthenticated(),
     staleTime: 1000 * 60 * 5,
     gcTime: 1000 * 60 * 30,
   });

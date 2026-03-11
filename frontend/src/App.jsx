@@ -175,19 +175,8 @@ function App() {
   // =========================================================================
   // CONDITIONAL RENDERING - After all hooks and callbacks
   // =========================================================================
-  if (authLoading) {
-    return (
-      <div className="min-h-screen serene-gradient flex items-center justify-center">
-        <div className="animate-pulse flex flex-col items-center gap-4">
-          <div className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-            Cortex
-          </div>
-          <div className="text-muted-foreground">Loading...</div>
-        </div>
-      </div>
-    );
-  }
-
+  // SplashScreen handles auth loading state
+  
   // Public routes - Landing page at /, Auth pages at /login and /signup
   const isLandingPage = location.pathname === '/';
   const isAuthPage = location.pathname === '/login' || location.pathname === '/signup';
