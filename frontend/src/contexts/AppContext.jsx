@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { loadAppSetting, saveAppSetting } from '../utils/storage';
 import { useLoginMutation, useRegisterMutation, useLogoutMutation, useGetMeQuery, getStoredUser, isAuthenticated } from '../hooks/queries/authQueries';
 
@@ -13,6 +14,7 @@ export function useApp() {
 }
 
 export function AppProvider({ children }) {
+  const queryClient = useQueryClient();
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
@@ -103,21 +105,25 @@ export function AppProvider({ children }) {
     try {
       const result = await loginMutation.mutateAsync(credentials);
       setUser(result.data.data);
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['todos'] });
       return result;
     } catch (error) {
       throw error;
     }
-  }, [loginMutation]);
+  }, [loginMutation, queryClient]);
 
   const register = useCallback(async (userData) => {
     try {
       const result = await registerMutation.mutateAsync(userData);
       setUser(result.data.data);
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['todos'] });
       return result;
     } catch (error) {
       throw error;
     }
-  }, [registerMutation]);
+  }, [registerMutation, queryClient]);
 
   const logout = useCallback(async () => {
     await logoutMutation.mutateAsync();

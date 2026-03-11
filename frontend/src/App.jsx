@@ -49,7 +49,6 @@ function App() {
   // =========================================================================
   // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL RETURNS
   // =========================================================================
-  const [showSplash, setShowSplash] = useState(true);
   
   // Context hooks
   const {
@@ -431,9 +430,7 @@ function App() {
   // ===========================================================================
   return (
     <div className="min-h-screen serene-gradient">
-      <AnimatePresence>
-        {showSplash && <SplashScreen onComplete={() => setShowSplash(false)} />}
-      </AnimatePresence>
+      <SplashScreen isReady={!authLoading && user !== null} />
       <div className="container mx-auto px-4 py-6 max-w-7xl">
         <Header
           onOpenShortcuts={() => setShowShortcutsModal(true)}
