@@ -78,7 +78,7 @@ function MobileNav({
   const location = useLocation();
   
   const isActive = (path) => {
-    if (path === '/' && location.pathname === '/') return true;
+    if (path === '/calendar' && location.pathname === '/calendar') return true;
     return location.pathname === path;
   };
 
@@ -93,8 +93,8 @@ function MobileNav({
         <NavButton
           icon={<Calendar className="h-5 w-5" />}
           label="Calendar"
-          active={isActive('/')}
-          onClick={() => navigate('/')}
+          active={isActive('/calendar')}
+          onClick={() => navigate('/calendar')}
         />
         
         <NavButton

@@ -23,7 +23,7 @@ export default function LoginPage() {
   const { login, register, user } = useApp();
 
   if (user) {
-    const from = location.state?.from?.pathname || '/';
+    const from = location.state?.from?.pathname || '/calendar';
     navigate(from, { replace: true });
     return null;
   }
@@ -45,7 +45,8 @@ export default function LoginPage() {
       } else {
         await register({ name, email, password, passwordConfirm: confirmPassword });
       }
-      navigate('/', { replace: true });
+      const from = location.state?.from?.pathname || '/calendar';
+      navigate(from, { replace: true });
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Authentication failed');
     } finally {

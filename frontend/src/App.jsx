@@ -43,6 +43,7 @@ import DailyTipCard from "./components/sidebar/DailyTipCard";
 import SplashScreen from "./components/pwa/SplashScreen";
 import LoginPage from "./components/auth/LoginPage";
 import NotFoundPage from "./components/NotFoundPage";
+import LandingPage from "./components/LandingPage";
 
 function App() {
   // =========================================================================
@@ -164,7 +165,7 @@ function App() {
       setShowTodoForm(true);
     },
     escape: closeAllModals,
-    "alt+1": () => navigate("/"),
+    "alt+1": () => navigate("/calendar"),
     "alt+2": () => navigate("/tasks"),
     "alt+3": () => navigate("/scheduler"),
     "alt+d": toggleDarkMode,
@@ -188,14 +189,21 @@ function App() {
     );
   }
 
-  if (!user) {
-    // Check if we're on login/signup routes
-    const isAuthRoute = location.pathname === '/login' || location.pathname === '/signup';
-    if (!isAuthRoute) {
-      return <Navigate to="/login" state={{ from: location }} replace />;
-    }
-    // On auth routes, render LoginPage (it handles both login and signup based on URL)
+  // Public routes - Landing page at /, Auth pages at /login and /signup
+  const isLandingPage = location.pathname === '/';
+  const isAuthPage = location.pathname === '/login' || location.pathname === '/signup';
+  
+  if (isLandingPage) {
+    return <LandingPage />;
+  }
+  
+  if (isAuthPage) {
     return <LoginPage />;
+  }
+
+  // Protected routes - redirect to login if not authenticated
+  if (!user) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
   // =========================================================================
@@ -451,7 +459,7 @@ function App() {
             style={{ transition: "all 0.5s cubic-bezier(0.4,0,0.2,1)" }}
           >
             <Routes location={location}>
-              <Route path="/" element={
+              <Route path="/calendar" element={
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}

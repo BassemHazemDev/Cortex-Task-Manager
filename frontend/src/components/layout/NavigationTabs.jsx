@@ -11,14 +11,14 @@ const NavigationTabs = ({ currentView, setCurrentView }) => {
   const isMobile = useIsMobile();
   const location = useLocation();
   
-  const isCalendar = location.pathname === "/";
+  const isCalendar = location.pathname === "/calendar";
   const isScheduler = location.pathname === "/scheduler";
   const isStatistics = location.pathname === "/statistics";
 
   return (
     <div className="flex space-x-2 mb-8 navigation-container items-center relative">
       <div className="flex space-x-2 navigation-inner">
-        <NavLink to="/" className={({ isActive }) => isActive || isCalendar ? "inline-flex items-center space-x-2 transition-all duration-300 hover:shadow-md active:scale-95 bg-primary text-primary-foreground shadow-xs rounded-md text-sm font-medium h-9 px-4 py-2" : "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 border border-input bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-input/30 dark:border-input dark:hover:bg-input/50 h-9 px-4 py-2"}>
+        <NavLink to="/calendar" className={({ isActive }) => isActive || isCalendar ? "inline-flex items-center space-x-2 transition-all duration-300 hover:shadow-md active:scale-95 bg-primary text-primary-foreground shadow-xs rounded-md text-sm font-medium h-9 px-4 py-2" : "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 border border-input bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-input/30 dark:border-input dark:hover:bg-input/50 h-9 px-4 py-2"}>
           <Calendar className="h-4 w-4" />
           <span>Calendar</span>
         </NavLink>
