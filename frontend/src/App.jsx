@@ -5,7 +5,7 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
-import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
+import { Routes, Route, useNavigate, useLocation, Navigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import dailyTips from "./lib/dailyTips";
 import { useDateRefresh } from "./hooks/useDateRefresh";
@@ -42,6 +42,7 @@ import DailyTipCard from "./components/sidebar/DailyTipCard";
 
 import SplashScreen from "./components/pwa/SplashScreen";
 import LoginPage from "./components/auth/LoginPage";
+import NotFoundPage from "./components/NotFoundPage";
 
 function App() {
   // =========================================================================
@@ -188,6 +189,12 @@ function App() {
   }
 
   if (!user) {
+    // Check if we're on login/signup routes
+    const isAuthRoute = location.pathname === '/login' || location.pathname === '/signup';
+    if (!isAuthRoute) {
+      return <Navigate to="/login" state={{ from: location }} replace />;
+    }
+    // On auth routes, render LoginPage (it handles both login and signup based on URL)
     return <LoginPage />;
   }
 
@@ -508,13 +515,16 @@ function App() {
               } />
               <Route path="/statistics" element={
                 <motion.div
+                  key="statistics"
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
                   transition={{ duration: 0.3, ease: "easeOut" }}
                 >
                   <StatisticsView />
                 </motion.div>
               } />
+              <Route path="*" element={<NotFoundPage />} />
             </Routes>
           </div>
 

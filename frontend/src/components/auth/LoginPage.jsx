@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Loader2, Mail, Lock, User, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -6,7 +7,12 @@ import { Input } from '@/components/ui/input';
 import { useApp } from '@/contexts/AppContext';
 
 export default function LoginPage() {
-  const [isLogin, setIsLogin] = useState(true);
+  const location = useLocation();
+  const navigate = useNavigate();
+  
+  const isSignup = location.pathname === '/signup';
+  const isLogin = !isSignup;
+  
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -14,14 +20,20 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const { login, register } = useApp();
+  const { login, register, user } = useApp();
+
+  if (user) {
+    const from = location.state?.from?.pathname || '/';
+    navigate(from, { replace: true });
+    return null;
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setIsLoading(true);
 
-    if (!isLogin && password !== confirmPassword) {
+    if (isSignup && password !== confirmPassword) {
       setError('Passwords do not match');
       setIsLoading(false);
       return;
@@ -33,16 +45,12 @@ export default function LoginPage() {
       } else {
         await register({ name, email, password, passwordConfirm: confirmPassword });
       }
+      navigate('/', { replace: true });
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Authentication failed');
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const toggleMode = () => {
-    setIsLogin(!isLogin);
-    setError('');
   };
 
   return (
@@ -63,7 +71,7 @@ export default function LoginPage() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {!isLogin && (
+            {isSignup && (
               <div className="space-y-2">
                 <label className="text-sm font-medium">Name</label>
                 <div className="relative">
@@ -74,7 +82,7 @@ export default function LoginPage() {
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     className="pl-10"
-                    required={!isLogin}
+                    required={isSignup}
                   />
                 </div>
               </div>
@@ -111,7 +119,7 @@ export default function LoginPage() {
               </div>
             </div>
 
-            {!isLogin && (
+            {isSignup && (
               <div className="space-y-2">
                 <label className="text-sm font-medium">Confirm Password</label>
                 <div className="relative">
@@ -122,7 +130,7 @@ export default function LoginPage() {
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     className="pl-10"
-                    required={!isLogin}
+                    required={isSignup}
                     minLength={8}
                   />
                 </div>
@@ -149,13 +157,12 @@ export default function LoginPage() {
           <div className="mt-6 text-center">
             <p className="text-sm text-muted-foreground">
               {isLogin ? "Don't have an account?" : 'Already have an account?'}
-              <button
-                type="button"
-                onClick={toggleMode}
+              <Link
+                to={isLogin ? '/signup' : '/login'}
                 className="ml-1 text-primary hover:underline font-medium"
               >
                 {isLogin ? 'Sign up' : 'Sign in'}
-              </button>
+              </Link>
             </p>
           </div>
         </div>

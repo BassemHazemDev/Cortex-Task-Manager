@@ -1,9 +1,10 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import { useApp } from "../../contexts/AppContext";
 import { useTasks } from "../../contexts/TaskContext";
 import { useTodos } from "../../contexts/TodoContext";
 import { Button } from "../ui/button";
-import { Keyboard, Upload, Download, Plus, Settings, Moon, Sun } from "lucide-react";
+import { Keyboard, Upload, Download, Plus, Settings, Moon, Sun, LogOut } from "lucide-react";
 import { importAllData, importICS, exportAllData } from "../../utils/storage";
 import { useIsMobile } from "../../hooks/use-mobile";
 
@@ -12,14 +13,21 @@ const Header = ({
   onOpenSettings,
   onAddTask,
 }) => {
+  const navigate = useNavigate();
   const {
     isDarkMode,
     toggleDarkMode,
     showNotification,
+    logout,
   } = useApp();
   const { tasks, setTasks } = useTasks();
   const { setTodos } = useTodos();
   const isMobile = useIsMobile();
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login');
+  };
 
   const handleExportTasks = async () => {
     try {
@@ -175,6 +183,15 @@ const Header = ({
             >
               <Settings className="h-5 w-5" />
             </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleLogout}
+              className="rounded-full"
+              title="Logout"
+            >
+              <LogOut className="h-5 w-5" />
+            </Button>
           </div>
         </div>
       </header>
@@ -281,6 +298,17 @@ const Header = ({
               </Button>
             </div>
           </div>
+          {/* Logout button */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleLogout}
+            className="transition-all duration-300 hover:shadow-md active:scale-95 button"
+            title="Logout"
+          >
+            <LogOut className="h-4 w-4 mr-2" />
+            Logout
+          </Button>
           {/* Add Task button */}
           <Button
             onClick={() => onAddTask()}
