@@ -1,8 +1,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { useApp } from "../../contexts/AppContext";
-import { useTasks } from "../../contexts/TaskContext";
-import { useTodos } from "../../contexts/TodoContext";
 import { Button } from "../ui/button";
 import { Keyboard, Upload, Download, Plus, Settings, Moon, Sun, LogOut } from "lucide-react";
 import { importAllData, importICS, exportAllData } from "../../utils/storage";
@@ -14,14 +13,13 @@ const Header = ({
   onAddTask,
 }) => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const {
     isDarkMode,
     toggleDarkMode,
     showNotification,
     logout,
   } = useApp();
-  const { tasks, setTasks } = useTasks();
-  const { setTodos } = useTodos();
   const isMobile = useIsMobile();
 
   const handleLogout = async () => {
@@ -62,13 +60,13 @@ const Header = ({
     const name = file.name.toLowerCase();
     if (name.endsWith(".json")) {
       importAllData(file)
-        .then(({ tasks: importedTasks, todos: importedTodos }) => {
-          setTasks(importedTasks);
-          setTodos(importedTodos);
+        .then(({ tasksImported, todosImported }) => {
+          queryClient.invalidateQueries({ queryKey: ['tasks'] });
+          queryClient.invalidateQueries({ queryKey: ['todos'] });
           showNotification({
             type: "success",
             message: "Data imported successfully",
-            details: `${importedTasks.length} tasks and ${importedTodos.length} TODOs loaded from ${file.name}`,
+            details: `${tasksImported} tasks and ${todosImported} TODOs imported from ${file.name}`,
           });
         })
         .catch((err) => {
@@ -80,30 +78,12 @@ const Header = ({
         });
     } else if (name.endsWith(".ics")) {
       importICS(file)
-        .then(({ tasks: importedTasks, stats }) => {
-          const existingKeys = new Set(
-            tasks.map((t) => `${t.title}__${t.dueDate}__${t.dueTime}`)
-          );
-          const toAdd = importedTasks
-            .filter(
-              (it) =>
-                !existingKeys.has(`${it.title}__${it.dueDate}__${it.dueTime}`)
-            )
-            .map((it) => ({
-              ...it,
-              id: Date.now() + Math.floor(Math.random() * 10000),
-            }));
-          if (toAdd.length > 0) setTasks((prev) => [...prev, ...toAdd]);
-
-          const details =
-            stats.failed > 0
-              ? `${toAdd.length} events added. ${stats.failed} failed/skipped.`
-              : `${toAdd.length} events added as tasks from ${file.name}`;
-
+        .then(({ tasksAdded }) => {
+          queryClient.invalidateQueries({ queryKey: ['tasks'] });
           showNotification({
             type: "success",
             message: "Calendar imported",
-            details,
+            details: `${tasksAdded} events imported from ${file.name}`,
           });
         })
         .catch((err) => {

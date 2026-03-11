@@ -41,23 +41,23 @@ export default function LandingPage() {
   const features = [
     {
       icon: <Calendar className="h-6 w-6" />,
-      title: 'Calendar View',
-      description: 'Visualize your tasks in a beautiful calendar interface',
+      title: 'Drag & Drop Calendar',
+      description: 'Easily organize your schedule with intuitive drag and drop functionality',
     },
     {
       icon: <Sparkles className="h-6 w-6" />,
       title: 'Smart Scheduler',
-      description: 'Automatically schedule tasks based on duration and priority',
+      description: 'Automatically schedule tasks based on duration and priority to eliminate guesswork',
     },
     {
       icon: <CheckCircle className="h-6 w-6" />,
-      title: 'Task Management',
-      description: 'Organize tasks with subtasks, priorities, and deadlines',
+      title: 'Recurring Tasks',
+      description: 'Set up daily, weekly, or monthly repeating tasks to build lasting habits',
     },
     {
       icon: <BarChart2 className="h-6 w-6" />,
-      title: 'Statistics',
-      description: 'Track your productivity with detailed insights',
+      title: 'Statistics & Insights',
+      description: 'Track your productivity and execution rate with detailed visual insights',
     },
   ];
 

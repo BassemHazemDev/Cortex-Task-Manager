@@ -7,7 +7,7 @@ const TASKS_QUERY_KEY = ['tasks'];
 const isOnline = () => navigator.onLine;
 const isAuthenticated = () => !!localStorage.getItem('authToken');
 
-export const useTasksQuery = (filters = {}) => {
+export const useTasksQuery = (filters = { limit: 1000 }) => {
   return useQuery({
     queryKey: [...TASKS_QUERY_KEY, filters],
     queryFn: async () => {

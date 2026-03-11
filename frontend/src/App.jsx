@@ -182,14 +182,28 @@ function App() {
   const isAuthPage = location.pathname === '/login' || location.pathname === '/signup';
   
   if (isLandingPage) {
-    return <LandingPage />;
+    return (
+      <>
+        <SplashScreen isReady={!authLoading} />
+        {!authLoading && (user ? <Navigate to="/calendar" replace /> : <LandingPage />)}
+      </>
+    );
   }
   
   if (isAuthPage) {
-    return <LoginPage />;
+    return (
+      <>
+        <SplashScreen isReady={!authLoading} />
+        {!authLoading && (user ? <Navigate to="/calendar" replace /> : <LoginPage />)}
+      </>
+    );
   }
 
   // Protected routes - redirect to login if not authenticated
+  if (authLoading) {
+    return <SplashScreen isReady={false} />;
+  }
+
   if (!user) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }

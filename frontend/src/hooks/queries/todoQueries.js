@@ -18,7 +18,7 @@ export const useTodosQuery = () => {
         const localTodos = await loadTodosAsync();
         return localTodos;
       }
-      const response = await apiClient.get('/todos');
+      const response = await apiClient.get('/todos?limit=1000');
       return response.data.data || [];
     },
     staleTime: 1000 * 60 * 5,

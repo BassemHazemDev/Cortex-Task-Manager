@@ -25,8 +25,34 @@ class DataService {
   }
 
   async importJSON(userId: string, json: any) {
-    if (!json.version || json.version !== '2.0') {
-      throw new AppError('Invalid JSON format: missing or invalid version', 400);
+    const isLegacyFormat = !json.version || json.version !== '2.0';
+    
+    if (isLegacyFormat) {
+      if (!json.tasks || !Array.isArray(json.tasks)) {
+        throw new AppError('Invalid JSON format: missing tasks array', 400);
+      }
+
+      const userObjectId = new mongoose.Types.ObjectId(userId);
+      await Task.deleteMany({ createdBy: userObjectId });
+
+      const tasksToInsert = json.tasks.map((t: any) => ({
+        ...t,
+        createdBy: userObjectId,
+        _id: new mongoose.Types.ObjectId(),
+        repeatFrequency: t.repeatFrequency || 'none',
+        priority: t.priority || 'medium',
+        descriptionType: t.descriptionType || 'text',
+        dueDate: t.dueDate || new Date().toISOString().split('T')[0],
+      }));
+
+      if (tasksToInsert.length > 0) {
+        await Task.insertMany(tasksToInsert);
+      }
+
+      return {
+        tasksImported: tasksToInsert.length,
+        todosImported: 0,
+      };
     }
 
     if (!json.tasks || !Array.isArray(json.tasks)) {
@@ -48,6 +74,10 @@ class DataService {
       ...t,
       createdBy: userObjectId,
       _id: new mongoose.Types.ObjectId(),
+      repeatFrequency: t.repeatFrequency || 'none',
+      priority: t.priority || 'medium',
+      descriptionType: t.descriptionType || 'text',
+      dueDate: t.dueDate || new Date().toISOString().split('T')[0],
     }));
 
     const todosToInsert = json.todos.map((t: any) => ({

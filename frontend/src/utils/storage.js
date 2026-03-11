@@ -1,17 +1,12 @@
 /**
  * @module storage
  *
- * This module provides a set of utility functions for persisting task data
- * using IndexedDB (via Dexie).
- * 
- * BACKWARD COMPATIBILITY: loadTasks() and loadTodos() are maintained but now
- * return default/empty values immediately while async loading happens in background.
- * 
- * MIGRATION: On app initialization, existing localStorage data is automatically
- * migrated to IndexedDB and then CLEARED from localStorage.
+ * This module provides utility functions for importing/exporting data.
+ * Now integrates with backend API for cloud sync.
  */
 
 import db, { needsMigration, markMigrationComplete, saveSetting, loadSetting } from './db';
+import apiClient from '../lib/api';
 import { pad, formatDate, formatTime } from './dateUtils';
 
 // Storage keys (Only used for migration now)
@@ -221,33 +216,15 @@ export const clearTasks = () => {
 };
 
 /**
- * Exports both tasks, TODOs, and settings to a downloadable JSON file.
- * fetches data from IndexedDB to ensure the latest state is exported.
+ * Exports all user data from the backend and downloads as JSON file.
  */
 export const exportAllData = async () => {
   try {
-    const tasks = await loadTasksAsync();
-    const todos = await loadTodosAsync();
-    const settingsArray = await db.settings.toArray();
+    const response = await apiClient.get('/data/export');
+    const data = response.data.data;
 
-    // Convert settings array back to object
-    const settings = settingsArray.reduce((acc, item) => {
-      acc[item.key] = item.value;
-      return acc;
-    }, {});
-
-    const data = {
-      tasks,
-      todos,
-      settings,
-      exportDate: new Date().toISOString(),
-      version: '2.0' // IndexedDB format
-    };
-
-    const dataStr = JSON.stringify(data, null, 2);
-    const dataBlob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(dataBlob);
-
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
     link.download = `cortex-backup-${new Date().toISOString().split('T')[0]}.json`;
@@ -262,218 +239,38 @@ export const exportAllData = async () => {
 };
 
 /**
- * Imports tasks and TODOs from a user-selected JSON file.
- * Saves directly to IndexedDB and returns data for context refresh.
+ * Imports tasks and TODOs from a user-selected JSON file via backend API.
  * @param {File} file - The JSON file object.
- * @returns {Promise<{tasks: Array<Object>, todos: Array<Object>}>}
+ * @returns {Promise<{tasksImported: number, todosImported: number}>}
  */
 export const importAllData = async (file) => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-
-    reader.onload = async (e) => {
-      try {
-        const data = JSON.parse(e.target.result);
-        const tasks = Array.isArray(data) ? data : (data.tasks || []);
-        const todos = data.todos || [];
-
-        // Save to IndexedDB
-        await db.transaction('rw', db.tasks, db.todos, db.settings, async () => {
-          // Update Tasks
-          await db.tasks.clear();
-          if (tasks.length > 0) {
-            await db.tasks.bulkAdd(tasks);
-          }
-
-          // Update Todos
-          await db.todos.clear();
-          if (todos.length > 0) {
-            await db.todos.bulkAdd(todos);
-          }
-
-          // Update Settings if present
-          if (data.settings) {
-            for (const [key, value] of Object.entries(data.settings)) {
-              await saveSetting(key, value);
-            }
-          }
-        });
-
-        resolve({ tasks, todos });
-      } catch (error) {
-        console.error('Error importing data:', error);
-        reject(new Error('Failed to import data. Invalid file format or storage error.'));
-      }
-    };
-
-    reader.onerror = () => reject(new Error('An error occurred while reading the file.'));
-    reader.readAsText(file);
-  });
+  try {
+    const text = await file.text();
+    const json = JSON.parse(text);
+    
+    const response = await apiClient.post('/data/import/json', json);
+    return response.data; // { status: 'success', tasksImported, todosImported }
+  } catch (error) {
+    console.error('Error importing data:', error);
+    const message = error.response?.data?.message || 'Failed to import data. Please ensure the file is a valid Cortex backup exported from the cloud.';
+    throw new Error(message);
+  }
 };
 
 /**
- * Imports events from an iCalendar (.ics) file and converts them into task objects.
+ * Imports events from an ICS file via backend API.
  * @param {File} file - The .ics file selected by the user.
- * @returns {Promise<{tasks: Array<Object>, stats: {imported: number, failed: number}}>} 
+ * @returns {Promise<{tasksAdded: number}>}
  */
-export const importICS = (file) => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const text = e.target.result;
-        const lines = text.split(/\r?\n/);
-
-        const events = [];
-        let inEvent = false;
-        let current = {};
-
-        // Fold lines according to RFC5545
-        const unfolded = [];
-        for (let i = 0; i < lines.length; i++) {
-          const line = lines[i];
-          if (i > 0 && (line.startsWith(' ') || line.startsWith('\t'))) {
-            unfolded[unfolded.length - 1] += line.slice(1);
-          } else {
-            unfolded.push(line);
-          }
-        }
-
-        for (const raw of unfolded) {
-          const line = raw.trim();
-          if (!line) continue;
-          if (line === 'BEGIN:VEVENT') {
-            inEvent = true;
-            current = {};
-            continue;
-          }
-          if (line === 'END:VEVENT') {
-            inEvent = false;
-            if (Object.keys(current).length > 0) events.push(current);
-            current = {};
-            continue;
-          }
-          if (!inEvent) continue;
-
-          const idx = line.indexOf(':');
-          if (idx === -1) continue;
-          const namePart = line.slice(0, idx);
-          const value = line.slice(idx + 1);
-          const [nameRaw, ...paramParts] = namePart.split(';');
-          const name = nameRaw.toUpperCase();
-
-          if (!current[name]) current[name] = [];
-          current[name].push({ params: paramParts, value });
-        }
-
-        const tasks = [];
-        let idCounter = Date.now();
-        let failedCount = 0;
-
-        // Helper to parse ICS date string
-        const parseICSTime = (val) => {
-          if (!val) return null;
-          try {
-            const utc = val.endsWith('Z');
-            const core = val.replace(/Z$/i, '');
-            const m = core.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})?$/);
-            if (!m) return null; // Or handle date-only: YYYYMMDD
-
-            // Handle date-only (if match fails above, might implement date-only check here)
-            // But strict regex above requires T. Standard allows date-only for DTSTART/DTEND.
-
-            const year = Number(m[1]);
-            const month = Number(m[2]) - 1; // JS months are 0-based
-            const day = Number(m[3]);
-            const hour = Number(m[4]);
-            const minute = Number(m[5]);
-            const second = m[6] ? Number(m[6]) : 0;
-
-            if (utc) {
-              return new Date(Date.UTC(year, month, day, hour, minute, second));
-            }
-            return new Date(year, month, day, hour, minute, second);
-          } catch (e) {
-            return null;
-          }
-        };
-
-        for (const ev of events) {
-          try {
-            const summary = ev['SUMMARY']?.[0]?.value || 'Untitled Event';
-            const description = ev['DESCRIPTION']?.[0]?.value || '';
-            const dtStartRaw = ev['DTSTART']?.[0]?.value;
-            const dtEndRaw = ev['DTEND']?.[0]?.value;
-
-            if (!dtStartRaw) {
-              failedCount++;
-              continue;
-            }
-
-            // Handle date-only DTSTART (no T)
-            let startDateObj = null;
-            if (dtStartRaw.length === 8 && !dtStartRaw.includes('T')) {
-              const y = parseInt(dtStartRaw.substring(0, 4));
-              const m = parseInt(dtStartRaw.substring(4, 6)) - 1;
-              const d = parseInt(dtStartRaw.substring(6, 8));
-              startDateObj = new Date(y, m, d, 9, 0); // Default to 9 AM for all-day events?
-              // Or mark as all-day? Task manager seems to expect time.
-            } else {
-              startDateObj = parseICSTime(dtStartRaw);
-            }
-
-            if (!startDateObj) {
-              failedCount++;
-              continue;
-            }
-
-            let durationMin = 60;
-            if (dtEndRaw) {
-              let endDateObj = null;
-              if (dtEndRaw.length === 8 && !dtEndRaw.includes('T')) {
-                const y = parseInt(dtEndRaw.substring(0, 4));
-                const m = parseInt(dtEndRaw.substring(4, 6)) - 1;
-                const d = parseInt(dtEndRaw.substring(6, 8));
-                endDateObj = new Date(y, m, d, 10, 0);
-              } else {
-                endDateObj = parseICSTime(dtEndRaw);
-              }
-
-              if (endDateObj) {
-                durationMin = Math.max(1, Math.round((endDateObj - startDateObj) / 60000));
-              }
-            }
-
-            const baseTask = {
-              id: idCounter++,
-              title: summary,
-              description: description,
-              priority: 'medium',
-              estimatedDuration: durationMin,
-              isCompleted: false,
-              assignedSlot: null,
-              dueDate: formatDate(startDateObj),
-              dueTime: formatTime(startDateObj)
-            };
-
-            tasks.push(baseTask);
-
-          } catch (err) {
-            console.warn('Skipping invalid event', err);
-            failedCount++;
-          }
-        }
-
-        resolve({ tasks, stats: { imported: tasks.length, failed: failedCount } });
-
-      } catch (error) {
-        console.error('Error parsing ICS file:', error);
-        reject(new Error('Failed to parse ICS file.'));
-      }
-    };
-    reader.onerror = () => reject(new Error('Error reading file.'));
-    reader.readAsText(file);
-  });
+export const importICS = async (file) => {
+  try {
+    const text = await file.text();
+    const response = await apiClient.post('/data/import/ics', { file: text });
+    return response.data; // { status: 'success', tasksAdded }
+  } catch (error) {
+    console.error('Error importing ICS:', error);
+    throw new Error(error.response?.data?.message || 'Failed to import ICS file. Please try again.');
+  }
 };
 
 // ===========================================================================

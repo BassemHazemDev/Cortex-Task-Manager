@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Loader2, Mail, Lock, User, AlertCircle } from 'lucide-react';
@@ -22,11 +22,13 @@ export default function LoginPage() {
 
   const { login, register, user } = useApp();
 
-  if (user) {
-    const from = location.state?.from?.pathname || '/calendar';
-    navigate(from, { replace: true });
-    return null;
-  }
+  // Redirect if already logged in - use useEffect to avoid calling navigate during render
+  useEffect(() => {
+    if (user) {
+      const from = location.state?.from?.pathname || '/calendar';
+      navigate(from, { replace: true });
+    }
+  }, [user, navigate, location.state]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
