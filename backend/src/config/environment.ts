@@ -1,8 +1,9 @@
+import 'dotenv/config';
 import { z } from 'zod';
 
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
-  PORT: z.coerce.number().default(3000),
+  PORT: z.coerce.number().default(5000),
   MONGO_URI: z.string().min(1, 'MONGO_URI is required'),
   JWT_SECRET: z.string().min(1, 'JWT_SECRET is required'),
   JWT_EXPIRES_IN: z.string().default('15m'),

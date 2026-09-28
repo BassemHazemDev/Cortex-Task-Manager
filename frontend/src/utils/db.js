@@ -29,6 +29,15 @@ db.version(2).stores({
     templates: '++id' // For Part 5: Task Templates
 });
 
+// Version 3: Added weeklyGoals store
+db.version(3).stores({
+    tasks: '++id, dueDate, priority, isCompleted',
+    todos: '++id, isCompleted, order',
+    settings: 'key',
+    templates: '++id',
+    weeklyGoals: '++id, weekKey, isCompleted'
+});
+
 /**
  * Saves a setting to the settings table.
  * 

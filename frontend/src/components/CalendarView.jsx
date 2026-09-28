@@ -23,6 +23,12 @@ import {
 import { ConfirmDialog } from './ui/ConfirmDialog';
 import { exportToPDF, exportToJPEG } from '../utils/calendarExportUtils';
 import ExportCalendarModal from './modals/ExportCalendarModal';
+import { Target, Layers, RotateCcw, GripVertical } from 'lucide-react';
+import { useWeeklyGoals } from '../hooks/useWeeklyGoals';
+import { getWeekKey, formatWeekRangeDisplay, getGoalColor } from '../utils/weeklyGoalsUtils';
+import WeeklyGoalsDeck from './weekly/WeeklyGoalsDeck';
+import WeeklyGoalModal from './modals/WeeklyGoalModal';
+import FridayRolloverModal from './modals/FridayRolloverModal';
 
 // UI component mocks for demonstration; replace with your actual UI library imports in production.
 const Button = ({ children, ...props }) => <button {...props}>{children}</button>;
@@ -66,6 +72,31 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const calendarRef = useRef(null);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+
+  // Weekly Goals state & hook for current week (Saturday to Friday)
+  const currentWeekKey = useMemo(() => {
+    return getWeekKey(currentMonth);
+  }, [currentMonth]);
+
+  const {
+    goals: weeklyGoals,
+    unassignedCards,
+    totalHours: weeklyTotalHours,
+    completedHours: weeklyCompletedHours,
+    percentage: weeklyPercentage,
+    totalCardsCount: weeklyTotalCardsCount,
+    completedCardsCount: weeklyCompletedCardsCount,
+    uncompletedCardsCount: weeklyUncompletedCardsCount,
+    assignedCardsMap,
+    createGoal: createWeeklyGoal,
+    deleteGoal: deleteWeeklyGoal,
+    toggleCard: toggleWeeklyGoalCard,
+    assignCard: assignWeeklyGoalCard,
+    rolloverUnfinished: rolloverWeeklyGoals,
+  } = useWeeklyGoals(currentWeekKey);
+
+  const [isWeeklyGoalModalOpen, setIsWeeklyGoalModalOpen] = useState(false);
+  const [isRolloverModalOpen, setIsRolloverModalOpen] = useState(false);
 
   const handleExportPDF = () => {
     if (calendarRef.current) {
@@ -138,13 +169,14 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
     setCurrentMonth(newMonth);
   };
 
-  // Get days for weekly view (7 days starting from Monday of the week containing currentMonth)
+  // Get days for weekly view (7 days starting from Saturday to Friday)
   const getWeekDays = (date) => {
     const startOfWeek = new Date(date);
     const dayOfWeek = startOfWeek.getDay();
-    // Adjust to Monday: Sunday=0, Monday=1, Tuesday=2, etc.
-    const daysToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-    startOfWeek.setDate(startOfWeek.getDate() + daysToMonday);
+    // Distance back to Saturday: Sat(6)=0, Sun(0)=1, Mon(1)=2, Tue(2)=3, Wed(3)=4, Thu(4)=5, Fri(5)=6
+    const daysSinceSaturday = (dayOfWeek + 1) % 7;
+    startOfWeek.setDate(startOfWeek.getDate() - daysSinceSaturday);
+    startOfWeek.setHours(0, 0, 0, 0);
     
     const days = [];
     for (let i = 0; i < 7; i++) {
@@ -201,9 +233,8 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
   };
 
   const days = getDaysForView();
-  const dayNames = viewMode === 'month' 
-    ? ['Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri']
-    : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  // Saturday to Friday for both Month and Week views
+  const dayNames = ['Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
   const selectedDayTasks = getTasksForDate(selectedDate);
 
   // Get header title based on view mode
@@ -214,11 +245,9 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
       const weekDays = getWeekDays(currentMonth);
       const startDate = weekDays[0];
       const endDate = weekDays[6];
-      if (startDate.getMonth() === endDate.getMonth()) {
-        return `${startDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })} - Week of ${startDate.getDate()}`;
-      } else {
-        return `${startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
-      }
+      const startStr = startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      const endStr = endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      return `Week of ${startStr} – ${endStr}`;
     } else if (viewMode === '3day') {
       const threeDays = get3Days(currentMonth);
       const startDate = threeDays[0];
@@ -311,6 +340,28 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
           </div>
         </CardHeader>
         <CardContent className="p-4" style={{ maxWidth: '100%', overflow: 'hidden' }}>
+          {/* Weekly Goals & Missions Command Center (in Week View) */}
+          {viewMode === 'week' && (
+            <div className="mb-4">
+              <WeeklyGoalsDeck
+                weekKey={currentWeekKey}
+                goals={weeklyGoals}
+                unassignedCards={unassignedCards}
+                totalHours={weeklyTotalHours}
+                completedHours={weeklyCompletedHours}
+                percentage={weeklyPercentage}
+                totalCardsCount={weeklyTotalCardsCount}
+                completedCardsCount={weeklyCompletedCardsCount}
+                uncompletedCardsCount={weeklyUncompletedCardsCount}
+                onOpenNewGoalModal={() => setIsWeeklyGoalModalOpen(true)}
+                onOpenRolloverModal={() => setIsRolloverModalOpen(true)}
+                onToggleCard={toggleWeeklyGoalCard}
+                onAssignCard={assignWeeklyGoalCard}
+                onDeleteGoal={deleteWeeklyGoal}
+              />
+            </div>
+          )}
+
           {/* Header row displaying day names */}
           <div className={`grid gap-1 mb-2 ${viewMode === 'month' ? 'grid-cols-7' : viewMode === 'week' ? 'grid-cols-7' : 'grid-cols-3'}`} style={{ maxWidth: '100%' }}>
             {(viewMode === 'month' || viewMode === 'week' ? dayNames : days.map(d => d.toLocaleDateString('en-US', { weekday: 'short' }))).map((day, index) => (
@@ -389,11 +440,14 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
                   onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; }}
                   onDrop={(e) => {
                     e.preventDefault();
-                    const droppedTaskId = e.dataTransfer.getData("text/plain");
-                    if (droppedTaskId) {
-                      // Pass to parent for conflict logic
-                      if (typeof onTaskDrop === 'function') {
-                        onTaskDrop(Number(droppedTaskId), date);
+                    const droppedData = e.dataTransfer.getData("text/plain");
+                    if (droppedData) {
+                      if (droppedData.startsWith('goalcard:')) {
+                        const cardId = droppedData.replace('goalcard:', '');
+                        const dateStr = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+                        assignWeeklyGoalCard(cardId, dateStr);
+                      } else if (typeof onTaskDrop === 'function') {
+                        onTaskDrop(Number(droppedData), date);
                       }
                     }
                   }}
@@ -401,7 +455,51 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
                   <div className="text-sm font-semibold text-right mb-1" style={{ color: dayText }}>
                     {date.getDate()}
                   </div>
-                  <div className="space-y-1 calendar-card-content" style={{ maxWidth: '100%', overflow: 'hidden' }}>
+                  <div className="space-y-1.5 calendar-card-content" style={{ maxWidth: '100%', overflow: 'hidden' }}>
+                    {/* Render Assigned Weekly Goal Cards for this date */}
+                    {(() => {
+                      const dateStr = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+                      const dayGoalCards = assignedCardsMap[dateStr] || [];
+                      return dayGoalCards.map((card) => {
+                        const theme = getGoalColor(card.colorTheme);
+                        return (
+                          <div
+                            key={card.id}
+                            draggable
+                            onDragStart={(e) => {
+                              e.stopPropagation();
+                              e.dataTransfer.effectAllowed = 'move';
+                              e.dataTransfer.setData('text/plain', `goalcard:${card.id}`);
+                            }}
+                            onDoubleClick={(e) => {
+                              e.stopPropagation();
+                              toggleWeeklyGoalCard(card.id);
+                            }}
+                            className={`calendar-goal-card text-xs p-1.5 rounded-lg border shadow-xs transition-all duration-200 cursor-grab active:cursor-grabbing hover:scale-[1.02] hover:shadow-md flex items-center justify-between gap-1 select-none ${
+                              theme.bg
+                            } ${theme.border} ${
+                              card.isCompleted ? 'opacity-60 line-through' : ''
+                            }`}
+                            title="Weekly Mission Card • Double-click to toggle complete • Drag to move or return to deck"
+                          >
+                            <div className="flex items-center space-x-1 min-w-0">
+                              <Target className={`h-3 w-3 shrink-0 ${card.isCompleted ? 'text-emerald-500' : 'text-primary'}`} />
+                              <span className="truncate font-semibold text-[11px] text-foreground">
+                                {card.title}
+                              </span>
+                            </div>
+                            <div className="flex items-center space-x-1 shrink-0">
+                              <span className="text-[9px] font-bold px-1 py-0.2 rounded bg-background/80 text-foreground border border-border/40">
+                                {card.hours}h
+                              </span>
+                              {card.isCompleted && (
+                                <CheckCircle className="h-3 w-3 text-emerald-500 shrink-0" />
+                              )}
+                            </div>
+                          </div>
+                        );
+                      });
+                    })()}
                     {(() => {
                       // In month view, always show all tasks
                       if (viewMode === 'month') {
@@ -716,41 +814,119 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
             </CardTitle>
           </CardHeader>
           <CardContent className="p-4">
-            {/* Displays a progress bar for task completion on the selected day */}
-            {selectedDayTasks.length > 0 && (
-              <div className="mb-4">
-                {(() => {
-                  const completed = selectedDayTasks.filter(t => t.isCompleted).length;
-                  const percent = Math.round((completed / selectedDayTasks.length) * 100);
-                  return (
-                    <div style={{ width: '80%', margin: '0 auto' }}>
-                      <div className="flex justify-between items-center mb-1">
-                        <span className="text-sm font-medium" style={{ color: 'var(--muted-foreground)' }}>
-                          Progress: {completed} / {selectedDayTasks.length} tasks
-                        </span>
-                        <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{percent}%</span>
-                      </div>
-                      <div style={{ background: 'var(--muted)', borderRadius: '8px', height: '10px', width: '100%' }}>
-                        <div style={{
-                          width: `${percent}%`,
-                          height: '100%',
-                          background: 'var(--accent)',
-                          borderRadius: '8px',
-                          transition: 'width 0.3s'
-                        }} />
+            {(() => {
+              const selectedDateStr = selectedDate ? `${selectedDate.getFullYear()}-${pad(selectedDate.getMonth() + 1)}-${pad(selectedDate.getDate())}` : '';
+              const selectedDayGoalCards = selectedDateStr ? (assignedCardsMap[selectedDateStr] || []) : [];
+              const totalItems = selectedDayTasks.length + selectedDayGoalCards.length;
+              const completedTasksCount = selectedDayTasks.filter(t => t.isCompleted).length;
+              const completedGoalsCount = selectedDayGoalCards.filter(c => c.isCompleted).length;
+              const totalCompleted = completedTasksCount + completedGoalsCount;
+              const percent = totalItems > 0 ? Math.round((totalCompleted / totalItems) * 100) : 0;
+
+              return (
+                <>
+                  {totalItems > 0 && (
+                    <div className="mb-4">
+                      <div style={{ width: '80%', margin: '0 auto' }}>
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="text-sm font-medium" style={{ color: 'var(--muted-foreground)' }}>
+                            Progress: {totalCompleted} / {totalItems} items completed
+                          </span>
+                          <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{percent}%</span>
+                        </div>
+                        <div style={{ background: 'var(--muted)', borderRadius: '8px', height: '10px', width: '100%' }}>
+                          <div style={{
+                            width: `${percent}%`,
+                            height: '100%',
+                            background: 'var(--accent)',
+                            borderRadius: '8px',
+                            transition: 'width 0.3s'
+                          }} />
+                        </div>
                       </div>
                     </div>
-                  );
-                })()}
-              </div>
-            )}
-            {selectedDayTasks.length === 0 ? (
-              <EmptyCalendarDay onAddTask={() => {
-                if (typeof onCreateDate === 'function') {
-                  onCreateDate(selectedDate);
-                }
-              }} />
-            ) : (
+                  )}
+
+                  {/* Assigned Weekly Goal Cards for this date */}
+                  {selectedDayGoalCards.length > 0 && (
+                    <div className="mb-4 space-y-2">
+                      <div className="flex items-center space-x-1.5 text-xs font-bold text-foreground">
+                        <Target className="h-4 w-4 text-primary" />
+                        <span>Weekly Mission Cards for this Day ({selectedDayGoalCards.length})</span>
+                      </div>
+                      <div className="space-y-2">
+                        {selectedDayGoalCards.map((card) => {
+                          const theme = getGoalColor(card.colorTheme);
+                          return (
+                            <div
+                              key={card.id}
+                              onDoubleClick={() => toggleWeeklyGoalCard(card.id)}
+                              className={`flex items-center justify-between p-3 rounded-xl border transition-all duration-200 cursor-pointer hover:shadow-md ${
+                                theme.bg
+                              } ${theme.border} ${
+                                card.isCompleted ? 'opacity-65' : ''
+                              }`}
+                              title="Double-click or click checkmark to toggle complete"
+                            >
+                              <div className="flex items-center space-x-3">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleWeeklyGoalCard(card.id);
+                                  }}
+                                  className="w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all border-primary"
+                                  style={{
+                                    background: card.isCompleted ? 'var(--accent-2)' : 'var(--background)',
+                                  }}
+                                >
+                                  {card.isCompleted && (
+                                    <CheckCircle className="h-3.5 w-3.5 text-white" />
+                                  )}
+                                </button>
+                                <div>
+                                  <div className={`font-semibold text-sm text-foreground ${card.isCompleted ? 'line-through text-muted-foreground' : ''}`}>
+                                    {card.title}
+                                  </div>
+                                  <div className="text-xs text-muted-foreground">
+                                    {card.goalTitle}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-background/80 text-foreground border border-border/50">
+                                  {card.hours} hrs
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    assignWeeklyGoalCard(card.id, null);
+                                  }}
+                                  className="text-xs text-muted-foreground hover:text-foreground underline ml-2"
+                                  title="Return to unassigned deck"
+                                >
+                                  Unassign
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {totalItems === 0 && (
+                    <EmptyCalendarDay onAddTask={() => {
+                      if (typeof onCreateDate === 'function') {
+                        onCreateDate(selectedDate);
+                      }
+                    }} />
+                  )}
+                </>
+              );
+            })()}
+            {selectedDayTasks.length > 0 && (
               <div className="space-y-3">
                 {[...selectedDayTasks].sort((a, b) => {
                   if (!a.dueTime) return 1;
@@ -889,6 +1065,26 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
         onClose={() => setIsExportModalOpen(false)}
         onExportPDF={handleExportPDF}
         onExportJPEG={handleExportJPEG}
+      />
+
+      <WeeklyGoalModal
+        isOpen={isWeeklyGoalModalOpen}
+        onClose={() => setIsWeeklyGoalModalOpen(false)}
+        onSave={createWeeklyGoal}
+        weekRangeText={formatWeekRangeDisplay(currentWeekKey)}
+      />
+
+      <FridayRolloverModal
+        isOpen={isRolloverModalOpen}
+        onClose={() => setIsRolloverModalOpen(false)}
+        weekKey={currentWeekKey}
+        goals={weeklyGoals}
+        uncompletedCardsCount={weeklyUncompletedCardsCount}
+        completedCardsCount={weeklyCompletedCardsCount}
+        totalHours={weeklyTotalHours}
+        completedHours={weeklyCompletedHours}
+        onToggleCard={toggleWeeklyGoalCard}
+        onRollover={rolloverWeeklyGoals}
       />
       
       {/* Mobile Long-Press Context Menu */}
@@ -1071,11 +1267,33 @@ const CalendarView = ({ selectedDate, onDateSelect, tasks, onTaskClick, onToggle
               {(() => {
                 const dateStr = `${selectedDate.getFullYear()}-${pad(selectedDate.getMonth() + 1)}-${pad(selectedDate.getDate())}`;
                 const dayTasks = tasks.filter(t => t.dueDate === dateStr);
-                if (dayTasks.length === 0) {
-                  return <p className="text-sm text-muted-foreground">No tasks for this day</p>;
+                const dayGoalCards = assignedCardsMap[dateStr] || [];
+                if (dayTasks.length === 0 && dayGoalCards.length === 0) {
+                  return <p className="text-sm text-muted-foreground">No tasks or missions for this day</p>;
                 }
                 return (
                   <div className="space-y-2">
+                    {dayGoalCards.map((card) => {
+                      const theme = getGoalColor(card.colorTheme);
+                      return (
+                        <div
+                          key={card.id}
+                          onClick={() => toggleWeeklyGoalCard(card.id)}
+                          className={`p-2.5 rounded-lg border cursor-pointer transition-all flex items-center justify-between gap-2 ${
+                            theme.bg
+                          } ${theme.border} ${card.isCompleted ? 'opacity-60 line-through' : ''}`}
+                        >
+                          <div className="flex items-center space-x-2 min-w-0">
+                            <Target className={`h-4 w-4 shrink-0 ${card.isCompleted ? 'text-emerald-500' : 'text-primary'}`} />
+                            <span className="font-semibold text-xs text-foreground truncate">{card.title}</span>
+                          </div>
+                          <div className="flex items-center space-x-1.5 shrink-0">
+                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-background/80">{card.hours}h</span>
+                            {card.isCompleted && <CheckCircle className="h-3.5 w-3.5 text-emerald-500" />}
+                          </div>
+                        </div>
+                      );
+                    })}
                     {dayTasks.map(task => (
                       <div
                         key={task.id}

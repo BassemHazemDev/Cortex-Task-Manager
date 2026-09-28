@@ -13,9 +13,25 @@ import { AppError } from './utils/handlers/appError';
 
 const app: Application = express();
 
-app.use(helmet());
-app.use(cors({ origin: env.CORS_ORIGIN, credentials: true }));
-// app.use(mongoSanitize()); // Disabled due to Express 5 compatibility
+app.use(helmet({ crossOriginResourcePolicy: false }));
+
+const allowedOrigins = env.CORS_ORIGIN.split(',').map((o) => o.trim());
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      if (
+        allowedOrigins.includes(origin) ||
+        (env.NODE_ENV === 'development' && /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin))
+      ) {
+        return callback(null, true);
+      }
+      callback(new Error(`Origin ${origin} not allowed by CORS`));
+    },
+    credentials: true,
+  })
+);
 
 const limiter = rateLimit({
   max: 100,
